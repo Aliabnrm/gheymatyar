@@ -1,0 +1,25 @@
+{
+  "currency": "IRR",
+  "supplier": "پخش شبکه پارس (داده آزمایشی)",
+  "old_version": "1405-05-20",
+  "new_version": "1405-05-27",
+  "expected_counts": {
+    "old_items": 24,
+    "new_items": 24,
+    "added": 2,
+    "removed": 2,
+    "price_changed": 18,
+    "metadata_only_changed": 2,
+    "unchanged": 2
+  },
+  "added_codes": ["NET-TP-ER605", "CCTV-HK-1123G2"],
+  "removed_codes": ["NET-UB-U6PLUS", "MON-LG-24MP400"],
+  "unchanged_codes": ["NET-TP-SG1008D", "RACK-PDU-6"],
+  "metadata_only": {
+    "CCTV-HK-1043G2": ["product_name"],
+    "CCTV-DH-HFW1400": ["availability_status"]
+  },
+  "high_risk_changes": {
+    "ACC-RJ45-CAT6-100": ["price_irr", "pack_size", "product_name"]
+  }
+}

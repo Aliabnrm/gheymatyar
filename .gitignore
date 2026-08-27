@@ -1,0 +1,88 @@
+# Operating system files
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# Editors and local assistant settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.claude/settings.local.json
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.envrc
+.direnv/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.ipynb_checkpoints/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+site/
+*.egg-info/
+
+# Node.js, pnpm and Next.js
+node_modules/
+.pnpm-store/
+.next/
+out/
+.turbo/
+.swc/
+.parcel-cache/
+.vercel/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# Test and coverage reports
+coverage/
+*.lcov
+playwright-report/
+test-results/
+
+# Local runtime data
+.cache/
+.local/
+tmp/
+temp/
+uploads/
+storage/
+var/
+*.sqlite
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Logs
+*.log
+*.log.*
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
