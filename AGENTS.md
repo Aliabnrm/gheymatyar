@@ -157,7 +157,8 @@ A feature is done only when:
 - make bootstrap: install backend and frontend dependencies.
 - make test: run backend and frontend tests.
 - make lint: run Ruff, mypy, ESLint, and TypeScript checks.
-- make dev: show commands for running both apps locally.
+- make backend-dev: run the FastAPI backend locally.
+- make frontend-dev: run the Next.js frontend locally.
 - make compose-up: run the local container stack.
 
 ## Explicitly deferred

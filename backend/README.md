@@ -33,7 +33,7 @@ domain هیچ وابستگی‌ای به FastAPI، Pydantic، openpyxl یا زی
 
 از ریشه مخزن:
 
-    make api-dev
+    make backend-dev
 
 یا از این پوشه:
 

@@ -20,7 +20,7 @@
 
 برای فرانت‌اند production build نیز اجرا شود:
 
-    pnpm --dir apps/web build
+    pnpm --dir frontend build
 
 ## Pull Request
 

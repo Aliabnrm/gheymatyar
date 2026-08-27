@@ -30,7 +30,7 @@ src/
 
 ## کنترل کیفیت
 
-از پوشه `apps/web` اجرا کنید:
+از پوشه `frontend` اجرا کنید:
 
 ```bash
 pnpm format:check

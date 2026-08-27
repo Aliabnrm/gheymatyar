@@ -64,7 +64,7 @@
 
 Backend:
 
-    cd apps/api
+    cd backend
     uv run ruff format --check app tests
     uv run ruff check app tests
     uv run mypy app

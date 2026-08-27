@@ -9,26 +9,26 @@ permissions:
   contents: read
 
 jobs:
-  api:
-    name: API quality
+  backend:
+    name: Backend quality
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/api
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.8.14"
           enable-cache: true
-          cache-dependency-glob: apps/api/uv.lock
+          cache-dependency-glob: backend/uv.lock
       - run: uv sync --frozen --dev
       - run: uv run ruff check app tests
       - run: uv run mypy app
       - run: uv run pytest
 
-  web:
-    name: Web quality
+  frontend:
+    name: Frontend quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +40,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --dir apps/web test
-      - run: pnpm --dir apps/web lint
-      - run: pnpm --dir apps/web typecheck
-      - run: pnpm --dir apps/web format:check
-      - run: pnpm --dir apps/web build
+      - run: pnpm --dir frontend test
+      - run: pnpm --dir frontend lint
+      - run: pnpm --dir frontend typecheck
+      - run: pnpm --dir frontend format:check
+      - run: pnpm --dir frontend build

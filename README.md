@@ -19,6 +19,17 @@
 
 فایل‌های fixtures/excel داده آزمایشی هستند و قیمت واقعی بازار محسوب نمی‌شوند.
 
+## ساختار مخزن
+
+    backend/        # سرویس FastAPI، دامنه، استخراج XLSX و تست‌های بک‌اند
+    frontend/       # داشبورد Next.js، قابلیت‌ها و تست‌های فرانت‌اند
+    contracts/      # قراردادهای داده مشترک
+    docs/           # اسناد محصول، معماری، امنیت و ADRها
+    fixtures/       # داده ساختگی مشترک برای regression و آزمون سراسری
+    infra/          # مستندات و تنظیمات زیرساخت مشترک
+
+فایل‌های orchestration مانند Makefile، Docker Compose، workspace و تنظیمات CI در root قرار دارند.
+
 ## اجرای سریع
 
 پیش‌نیازها:
@@ -34,11 +45,11 @@
 
 اجرای بک‌اند:
 
-    make api-dev
+    make backend-dev
 
 اجرای فرانت‌اند در یک ترمینال دیگر:
 
-    make web-dev
+    make frontend-dev
 
 سپس داشبورد در http://localhost:3000 و مستندات API در http://localhost:8000/docs در دسترس است.
 

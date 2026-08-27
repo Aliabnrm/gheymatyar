@@ -21,7 +21,7 @@ async def api_client() -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture(scope="session")
 def repository_root() -> Path:
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture(scope="session")

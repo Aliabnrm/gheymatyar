@@ -2,8 +2,8 @@
 
 Docker Compose پنج سرویس دارد:
 
-- web: داشبورد Next.js روی پورت 3000
-- api: FastAPI روی پورت 8000
+- frontend: داشبورد Next.js روی پورت 3000
+- backend: سرویس FastAPI روی پورت 8000
 - postgres: منبع داده مرحله persistence
 - redis: صف durable آینده
 - minio: نگهداری فایل اصلی آینده و کنسول روی پورت 9001

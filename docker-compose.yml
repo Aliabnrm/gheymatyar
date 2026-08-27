@@ -45,9 +45,9 @@ services:
       - "9001:9001"
     restart: unless-stopped
 
-  api:
+  backend:
     build:
-      context: ./apps/api
+      context: ./backend
     environment:
       APP_ENV: development
       APP_NAME: Gheymatyar API
@@ -70,14 +70,14 @@ services:
       - "8000:8000"
     restart: unless-stopped
 
-  web:
+  frontend:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
     depends_on:
-      - api
+      - backend
     ports:
       - "3000:3000"
     restart: unless-stopped

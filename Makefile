@@ -1,34 +1,34 @@
-.PHONY: bootstrap api-dev web-dev test test-api test-web lint format compose-up compose-down
+.PHONY: bootstrap backend-dev frontend-dev test test-backend test-frontend lint format compose-up compose-down
 
 bootstrap:
-	cd apps/api && uv sync --dev
+	cd backend && uv sync --dev
 	pnpm install
 
-api-dev:
-	cd apps/api && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+backend-dev:
+	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-web-dev:
-	pnpm --dir apps/web dev
+frontend-dev:
+	pnpm --dir frontend dev
 
-test: test-api test-web
+test: test-backend test-frontend
 
-test-api:
-	cd apps/api && uv run pytest
+test-backend:
+	cd backend && uv run pytest
 
-test-web:
-	pnpm --dir apps/web test
+test-frontend:
+	pnpm --dir frontend test
 
 lint:
-	cd apps/api && uv run ruff check app tests
-	cd apps/api && uv run mypy app
-	pnpm --dir apps/web lint
-	pnpm --dir apps/web typecheck
-	pnpm --dir apps/web format:check
+	cd backend && uv run ruff check app tests
+	cd backend && uv run mypy app
+	pnpm --dir frontend lint
+	pnpm --dir frontend typecheck
+	pnpm --dir frontend format:check
 
 format:
-	cd apps/api && uv run ruff format app tests
-	cd apps/api && uv run ruff check --fix app tests
-	pnpm --dir apps/web format
+	cd backend && uv run ruff format app tests
+	cd backend && uv run ruff check --fix app tests
+	pnpm --dir frontend format
 
 compose-up:
 	docker compose up --build

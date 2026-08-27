@@ -3,10 +3,10 @@
   "private": true,
   "packageManager": "pnpm@10.15.0",
   "scripts": {
-    "web:dev": "pnpm --dir apps/web dev",
-    "web:build": "pnpm --dir apps/web build",
-    "web:test": "pnpm --dir apps/web test",
-    "web:lint": "pnpm --dir apps/web lint",
-    "web:typecheck": "pnpm --dir apps/web typecheck"
+    "frontend:dev": "pnpm --dir frontend dev",
+    "frontend:build": "pnpm --dir frontend build",
+    "frontend:test": "pnpm --dir frontend test",
+    "frontend:lint": "pnpm --dir frontend lint",
+    "frontend:typecheck": "pnpm --dir frontend typecheck"
   }
 }
