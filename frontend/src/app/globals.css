@@ -49,10 +49,13 @@ body {
       transparent 26rem
     ),
     var(--surface-soft);
-  font-family: Vazirmatn, IRANSansX, "Segoe UI", Tahoma, Arial, sans-serif;
+  font-family: var(--font-vazirmatn), sans-serif;
   font-size: 15px;
   line-height: 1.7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,

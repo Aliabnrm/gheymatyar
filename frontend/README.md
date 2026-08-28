@@ -28,6 +28,10 @@ src/
 - Server Component حالت پیش‌فرض است. مرز Client از `comparison-workspace.tsx` آغاز می‌شود چون انتخاب فایل و state مرورگر را مدیریت می‌کند.
 - داده HTTP همیشه `unknown` فرض و پیش از ورود به model در runtime اعتبارسنجی می‌شود.
 
+## تایپوگرافی
+
+رابط فارسی با فونت متغیر Vazirmatn به‌صورت local و از طریق `next/font/local` ارائه می‌شود. فایل فونت، اطلاعات نسخه، checksum و متن کامل مجوز SIL Open Font License 1.1 در `src/assets/fonts` نگهداری می‌شوند. هیچ درخواست runtime به CDN فونت ارسال نمی‌شود.
+
 ## کنترل کیفیت
 
 از پوشه `frontend` اجرا کنید:
