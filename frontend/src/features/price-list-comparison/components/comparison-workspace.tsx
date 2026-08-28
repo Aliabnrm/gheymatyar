@@ -6,17 +6,14 @@ import { UploadPanel } from "./upload-panel";
 
 export function ComparisonWorkspace() {
   const comparison = usePriceListComparison();
-  const isSubmitting = comparison.request.status === "submitting";
-  const error =
-    comparison.request.status === "failure" ? comparison.request.error : null;
 
   return (
     <div className="container workspace">
       <UploadPanel
         oldFile={comparison.oldFile}
         newFile={comparison.newFile}
-        error={error}
-        isSubmitting={isSubmitting}
+        error={comparison.error}
+        isSubmitting={comparison.isSubmitting}
         onOldFileChange={comparison.setOldFile}
         onNewFileChange={comparison.setNewFile}
         onSubmit={() => void comparison.compare()}
@@ -30,7 +27,7 @@ export function ComparisonWorkspace() {
           onFilterChange={comparison.setFilter}
         />
       ) : (
-        <EmptyComparisonState isSubmitting={isSubmitting} />
+        <EmptyComparisonState isSubmitting={comparison.isSubmitting} />
       )}
     </div>
   );

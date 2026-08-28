@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import type { ComparisonItem } from "@/services/price-list-comparison/price-list-comparison.schema";
+
 import { filterComparisonItems } from "./filters";
-import type { ComparisonItem } from "./types";
 
 const base: ComparisonItem = {
   product_code: "A",

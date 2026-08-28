@@ -1,4 +1,6 @@
-import type { ComparisonItem, ResultFilter } from "./types";
+import type { ComparisonItem } from "@/services/price-list-comparison/price-list-comparison.schema";
+
+import type { ResultFilter } from "./types";
 
 export const RESULT_FILTERS: ReadonlyArray<{
   id: ResultFilter;

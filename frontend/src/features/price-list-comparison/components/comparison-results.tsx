@@ -1,11 +1,11 @@
 import { formatInteger } from "@/utils/format";
-
-import { RESULT_FILTERS } from "../model/filters";
 import type {
   ComparisonItem,
   ComparisonResponse,
-  ResultFilter,
-} from "../model/types";
+} from "@/services/price-list-comparison/price-list-comparison.schema";
+
+import { RESULT_FILTERS } from "../model/filters";
+import type { ResultFilter } from "../model/types";
 import { ComparisonTable } from "./comparison-table";
 import { SummaryCards } from "./summary-cards";
 

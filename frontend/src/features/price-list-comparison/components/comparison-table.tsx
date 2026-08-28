@@ -1,6 +1,8 @@
 import { formatIrr, formatPercent, formatPriceDelta } from "@/utils/format";
-
-import type { ChangeType, ComparisonItem } from "../model/types";
+import type {
+  ChangeType,
+  ComparisonItem,
+} from "@/services/price-list-comparison/price-list-comparison.schema";
 
 interface ComparisonTableProps {
   items: readonly ComparisonItem[];

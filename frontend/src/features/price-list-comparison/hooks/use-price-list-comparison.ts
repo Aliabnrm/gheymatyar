@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+
+import { ApiRequestError } from "@/core/api/api-error";
+import { useComparePriceListsMutation } from "@/services/price-list-comparison/price-list-comparison.hooks";
 
 import { filterComparisonItems } from "../model/filters";
-import {
-  comparisonRequestReducer,
-  getComparisonData,
-} from "../model/request-state";
-import type { ResultFilter } from "../model/types";
-import { ApiRequestError, comparePriceLists } from "../services/price-list-api";
+import type { ComparisonError, ResultFilter } from "../model/types";
 import { validateComparisonFiles } from "../validation/files";
 
 const UNKNOWN_ERROR = {
@@ -18,16 +16,12 @@ export function usePriceListComparison() {
   const [oldFile, setOldFileState] = useState<File | null>(null);
   const [newFile, setNewFileState] = useState<File | null>(null);
   const [filter, setFilter] = useState<ResultFilter>("all");
-  const [request, dispatch] = useReducer(comparisonRequestReducer, {
-    status: "idle",
-  });
-  const activeRequest = useRef<AbortController | null>(null);
+  const [validationError, setValidationError] =
+    useState<ComparisonError | null>(null);
+  const comparisonMutation = useComparePriceListsMutation();
 
-  useEffect(() => {
-    return () => activeRequest.current?.abort();
-  }, []);
-
-  const result = getComparisonData(request);
+  const result = comparisonMutation.data ?? null;
+  const error = validationError ?? getRequestError(comparisonMutation.error);
   const visibleItems = useMemo(
     () => (result ? filterComparisonItems(result.items, filter) : []),
     [filter, result],
@@ -36,55 +30,42 @@ export function usePriceListComparison() {
   function updateFile(kind: "old" | "new", file: File | null) {
     if (kind === "old") setOldFileState(file);
     else setNewFileState(file);
-    dispatch({ type: "error-cleared" });
+
+    setValidationError(null);
+    if (comparisonMutation.isError) comparisonMutation.reset();
   }
 
-  async function compare() {
+  function compare() {
     const validation = validateComparisonFiles(oldFile, newFile);
     if (!validation.valid) {
-      dispatch({ type: "validation-failed", error: validation.error });
+      setValidationError(validation.error);
       return;
     }
 
-    activeRequest.current?.abort();
-    const controller = new AbortController();
-    activeRequest.current = controller;
+    setValidationError(null);
     setFilter("all");
-    dispatch({ type: "request-started" });
-
-    try {
-      const response = await comparePriceLists(
-        validation.files.oldFile,
-        validation.files.newFile,
-        controller.signal,
-      );
-      dispatch({ type: "request-succeeded", data: response });
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      dispatch({
-        type: "request-failed",
-        error:
-          error instanceof ApiRequestError
-            ? { code: error.code, message: error.message }
-            : UNKNOWN_ERROR,
-      });
-    } finally {
-      if (activeRequest.current === controller) {
-        activeRequest.current = null;
-      }
-    }
+    comparisonMutation.mutate(validation.files);
   }
 
   return {
     oldFile,
     newFile,
     filter,
-    request,
     result,
+    error,
+    isSubmitting: comparisonMutation.isPending,
     visibleItems,
     setOldFile: (file: File | null) => updateFile("old", file),
     setNewFile: (file: File | null) => updateFile("new", file),
     setFilter,
     compare,
   };
+}
+
+function getRequestError(error: unknown): ComparisonError | null {
+  if (error === null) return null;
+
+  return error instanceof ApiRequestError
+    ? { code: error.code, message: error.message }
+    : UNKNOWN_ERROR;
 }

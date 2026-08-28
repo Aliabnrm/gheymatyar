@@ -1,6 +1,5 @@
 import { formatInteger } from "@/utils/format";
-
-import type { ComparisonSummary } from "../model/types";
+import type { ComparisonSummary } from "@/services/price-list-comparison/price-list-comparison.schema";
 
 interface SummaryCardsProps {
   summary: ComparisonSummary;
