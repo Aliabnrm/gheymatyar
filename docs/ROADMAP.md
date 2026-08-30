@@ -23,15 +23,23 @@
 
 تعریف پایان: کاربر بدون ترمینال دو fixture را انتخاب کند و نتیجه صحیح را ببیند.
 
-## مرحله ۲ — Import پایدار و persistence
+## مرحله ۲ — Persistence، هویت و Import پایدار
 
-- PostgreSQL و migration
-- سازمان و تأمین‌کننده
-- ذخیره فایل اصلی
-- import state machine
-- template نگاشت ستون
-- draft و approval
-- audit log
+وضعیت: زیرمرحله foundation انجام‌شده؛ persistence داده‌های قیمت هنوز شروع نشده است.
+
+ترتیب اجرایی این مرحله عمداً چنین است:
+
+1. PostgreSQL و Alembic migration — انجام‌شده
+2. Auth امن با session سمت سرور — انجام‌شده
+3. Organization Membership و نقش‌های OWNER/OPERATOR — انجام‌شده
+4. Supplier — شروع‌نشده
+5. PriceListVersion و نگهداری فایل اصلی — شروع‌نشده
+6. import state machine و template نگاشت ستون — شروع‌نشده
+7. Draft، Approval و Audit Log — شروع‌نشده
+
+مقایسه XLSX فعلی فقط پس از احراز هویت قابل استفاده است، اما فایل و نتیجه مقایسه
+هنوز ذخیره نمی‌شوند. Supplier، فایل و approval پیش از تکمیل زیرمرحله مربوطه به
+این foundation اضافه نمی‌شوند.
 
 ## مرحله ۳ — پردازش background
 

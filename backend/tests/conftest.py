@@ -1,10 +1,15 @@
+import os
 from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.main import app
+from app.core.config import Settings
+from app.main import create_app
+
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", Settings().database_url)
 
 
 @pytest.fixture
@@ -13,8 +18,13 @@ def anyio_backend() -> str:
 
 
 @pytest.fixture
-async def api_client() -> AsyncIterator[AsyncClient]:
-    transport = ASGITransport(app=app)
+def api_app() -> FastAPI:
+    return create_app(Settings(app_env="test", database_url=TEST_DATABASE_URL))
+
+
+@pytest.fixture
+async def api_client(api_app: FastAPI) -> AsyncIterator[AsyncClient]:
+    transport = ASGITransport(app=api_app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 

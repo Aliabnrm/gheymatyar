@@ -1,8 +1,13 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { ComparisonWorkspace } from "./comparison-workspace";
 
-export function PriceListComparisonPage() {
+export function PriceListComparisonPage({
+  accountActions,
+}: {
+  accountActions?: ReactNode;
+}) {
   return (
     <>
       <header className="topbar">
@@ -16,10 +21,12 @@ export function PriceListComparisonPage() {
               <small>دستیار قیمت عمده‌فروشی</small>
             </span>
           </Link>
-          <div className="topbar__status">
-            <span className="status-dot" aria-hidden="true" />
-            محیط آزمایشی · تمام مبالغ ریال
-          </div>
+          {accountActions ?? (
+            <div className="topbar__status">
+              <span className="status-dot" aria-hidden="true" />
+              محیط آزمایشی · تمام مبالغ ریال
+            </div>
+          )}
         </div>
       </header>
 

@@ -15,14 +15,22 @@
        v
     FastAPI Modular Monolith
        |-- API composition, health and shared HTTP errors
+       |-- accounts module
+       |   |-- users, organizations and memberships
+       |   +-- opaque sessions and organization context
        |-- price_lists module
        |   |-- presentation
        |   |-- application
        |   |-- domain
        |   +-- XLSX infrastructure
-       +-- no persistence in the current slice
+       +-- SQLAlchemy AsyncSession / asyncpg
+                 |
+                 v
+             PostgreSQL 17+
 
-در برش اول، مقایسه بدون ذخیره دائمی انجام می‌شود تا منطق دامنه مستقل و تست‌پذیر تثبیت شود.
+PostgreSQL منبع persistence فعال حساب‌ها و نشست‌ها است. مقایسه XLSX همچنان
+درخواست‌محور و بدون ذخیره فایل یا نتیجه انجام می‌شود؛ persistence تأمین‌کننده و
+لیست قیمت به زیرمرحله بعدی موکول است.
 
 ## قانون وابستگی
 
@@ -31,7 +39,18 @@
 
 Domain نباید FastAPI، SQLAlchemy، openpyxl، Redis، S3 یا SDK مدل AI را import کند.
 
-## ماژول پیاده‌سازی‌شده بک‌اند
+## ماژول‌های پیاده‌سازی‌شده بک‌اند
+
+### accounts
+
+- مدل‌های مستقل User، Organization، Membership و Session context
+- validation ایمیل، password و نام سازمان در application/domain boundary
+- use caseهای register، login، logout، current account و CSRF validation
+- portهای صریح password، token و account store
+- adapterهای Argon2id، token امن و SQLAlchemy
+- presentation شامل Cookie، origin validation، role guard و routeهای auth
+
+هیچ مدل domain به FastAPI، Pydantic، SQLAlchemy، Argon2 یا asyncpg وابسته نیست.
 
 ### price_lists
 
@@ -41,11 +60,19 @@ Domain نباید FastAPI، SQLAlchemy، openpyxl، Redis، S3 یا SDK مدل A
 - الگوریتم مقایسه
 - انواع تغییر
 
-دریافت امن فایل جزئی از مرز presentation همین قابلیت است؛ تا زمانی که چرخه import مستقل و persistence نداریم، ماژول جداگانه‌ای برای imports ساخته نمی‌شود. suppliers، organizations و quotations فقط مفاهیم roadmap هستند و هنوز کد یا جدول ندارند.
+دریافت امن فایل جزئی از مرز presentation همین قابلیت است؛ تا زمانی که چرخه import
+مستقل و persistence فایل نداریم، ماژول جداگانه‌ای برای imports ساخته نمی‌شود.
+suppliers و quotations هنوز کد یا جدول ندارند.
 
 ## راه‌اندازی برنامه و مرزهای مشترک
 
-`create_app(settings)` برنامه FastAPI را می‌سازد و تنظیمات تایپ‌شده را در state برنامه قرار می‌دهد. این factory باعث می‌شود تست‌ها بدون دست‌کاری global configuration برنامه مستقل بسازند.
+`create_app(settings)` یک engine و `async_sessionmaker` برای عمر برنامه می‌سازد و
+آن‌ها را همراه تنظیمات و سرویس‌های accounts در composition root قرار می‌دهد.
+برای هر عملیات repository یک AsyncSession کوتاه و transaction صریح باز می‌شود؛
+engine یا pool در هر درخواست دوباره ساخته نمی‌شود. `pool_pre_ping` و timeout
+قابل تنظیم‌اند و در تست از `NullPool` برای جداسازی event loopها استفاده می‌شود.
+lifespan در shutdown engine را dispose می‌کند. migration خودکار در startup وجود
+ندارد و Alembic باید پیش از استقرار اجرا شود.
 
 لایه مشترک HTTP مسئول موارد زیر است:
 
@@ -58,23 +85,41 @@ Domain نباید FastAPI، SQLAlchemy، openpyxl، Redis، S3 یا SDK مدل A
 
 ## جریان مقایسه فعلی
 
-1. Web دو فایل multipart ارسال می‌کند.
-2. API اندازه، پسوند و امضای ZIP را کنترل می‌کند.
-3. API پردازش هم‌گام openpyxl را به threadpool محدود Starlette می‌سپارد تا event loop مسدود نشود.
-4. XlsxPriceListExtractor سطر عنوان را پیدا می‌کند.
-5. ردیف‌ها به PriceListItem تبدیل می‌شوند و invariantهای دامنه کنترل می‌شوند.
-6. قوانین قطعی خطا را تولید می‌کنند.
-7. ComparePriceLists بر اساس کد نرمال‌شده دو map می‌سازد.
-8. خروجی چندبرچسبی و summary تولید می‌شود.
-9. API پاسخ نسخه‌دار برمی‌گرداند و هر دو فایل موقت درخواست را می‌بندد.
+1. Web نشست HttpOnly را همراه CSRF header می‌فرستد.
+2. API hash token را محاسبه و در یک query نشست، کاربر فعال، عضویت دقیق و سازمان
+   متصل به نشست را بازیابی می‌کند.
+3. role guard فقط OWNER و OPERATOR را می‌پذیرد.
+4. API اندازه، پسوند و امضای ZIP دو فایل multipart را کنترل می‌کند.
+5. API پردازش هم‌گام openpyxl را به threadpool محدود Starlette می‌سپارد.
+6. extraction و مقایسه قطعی اجرا و پاسخ نسخه‌دار برگردانده می‌شود.
+7. هر دو UploadFile در پایان، حتی هنگام خطا، بسته می‌شوند.
+
+## جریان Session تا سازمان جاری
+
+    Cookie gheymatyar_session (token خام)
+        -> SHA-256
+        -> Session فعال، منقضی‌نشده و revokeنشده
+        -> User فعال
+        -> Membership(user_id, session.organization_id)
+        -> Organization
+        -> CurrentAccountContext تایپ‌شده
+
+`organization_id` ورودی client هیچ‌گاه مدرک authorization نیست. Session آگاهانه
+به یک سازمان متصل است و membership در هر درخواست دوباره از PostgreSQL خوانده
+می‌شود. login فقط برای دقیقاً یک membership نشست می‌سازد؛ انتخاب یا تعویض سازمان
+هنوز وجود ندارد.
 
 ## مسیر persistence
 
-جدول‌های اصلی مرحله بعد:
+جدول‌های موجود:
 
 - organizations
 - users
-- memberships
+- organization_memberships
+- sessions
+
+جدول‌های زیرمرحله‌های بعد:
+
 - suppliers
 - documents
 - extraction_runs
@@ -91,13 +136,23 @@ Domain نباید FastAPI، SQLAlchemy، openpyxl، Redis، S3 یا SDK مدل A
 
 - GET /health/live
 - GET /health/ready
+- POST /api/v1/auth/register
+- POST /api/v1/auth/login
+- POST /api/v1/auth/logout
+- GET /api/v1/auth/me
 - POST /api/v1/price-lists/compare
 
-مسیر compare در مرحله اول stateless است. مسیرهای import و approval پس از اضافه‌شدن persistence جدا طراحی می‌شوند.
+`live` عمومی و مستقل از دیتابیس است؛ `ready` با `SELECT 1` PostgreSQL را بررسی
+می‌کند. مسیر compare از نظر داده قیمت stateless است، ولی session و سازمان معتبر
+می‌خواهد. مسیرهای import و approval پس از persistence لیست قیمت جدا طراحی می‌شوند.
 
 ## مدیریت خطا
 
-خطاهای دامنه enum پایدار دارند و تمام خطاهای HTTP دارای code انگلیسی، message فارسی، details امن و request_id هستند. جزئیات داخلی، stack trace و محتوای فایل به کاربر داده نمی‌شود؛ stack trace خطای غیرمنتظره فقط در log داخلی ثبت می‌شود.
+خطاهای دامنه enum پایدار دارند و تمام خطاهای HTTP دارای code انگلیسی، message
+فارسی، details امن و request_id هستند. جزئیات داخلی، stack trace و محتوای فایل به
+کاربر داده نمی‌شود. برای جلوگیری از ورود parameterهای SQL و hashها به log، خطای
+غیرمنتظره فقط با نوع exception، مسیر و request id ثبت می‌شود و متن/stack خام آن
+log نمی‌شود.
 
 ## مشاهده‌پذیری
 
@@ -112,7 +167,11 @@ Domain نباید FastAPI، SQLAlchemy، openpyxl، Redis، S3 یا SDK مدل A
 
 ## مقیاس‌پذیری فعلی و آینده
 
-API فعلی stateless است و می‌تواند افقی اجرا شود. threadpool از توقف درخواست‌های سبک هنگام parse فایل جلوگیری می‌کند، اما ظرفیت آن نامحدود نیست؛ timeout، محدودیت حافظه سطح process و انتقال پردازش طولانی به worker پیش از بار عمومی لازم است.
+Sessionهای اصلی در PostgreSQL هستند و API می‌تواند با store مشترک افقی اجرا شود؛
+اما login rate limiter فعلی حافظه‌ای و تک‌پردازه است و در scale افقی شمارنده مشترک
+ندارد. پیش از انتشار عمومی، limiter سطح reverse proxy یا adapter توزیع‌شده لازم
+است. threadpool نیز ظرفیت نامحدود ندارد؛ timeout و انتقال پردازش طولانی به worker
+پیش از بار عمومی لازم است.
 
 پس از فعال‌شدن مرحله persistence:
 

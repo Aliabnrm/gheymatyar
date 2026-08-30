@@ -26,7 +26,14 @@ class JsonFormatter(logging.Formatter):
         if request_id:
             payload["request_id"] = request_id
 
-        for field in ("method", "path", "status_code", "duration_ms", "error_code"):
+        for field in (
+            "method",
+            "path",
+            "status_code",
+            "duration_ms",
+            "error_code",
+            "error_type",
+        ):
             value = getattr(record, field, None)
             if value is not None:
                 payload[field] = value

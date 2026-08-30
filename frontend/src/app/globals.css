@@ -1,3 +1,32 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+}
+
 :root {
   --ink-950: #071a2b;
   --ink-900: #0d253b;
@@ -23,6 +52,25 @@
   --violet-100: #f0ecff;
   --blue-700: #23669b;
   --blue-100: #e8f3fc;
+  --background: var(--surface-soft);
+  --foreground: var(--ink-900);
+  --card: var(--surface);
+  --card-foreground: var(--ink-900);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink-900);
+  --primary: var(--teal-700);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-blue);
+  --secondary-foreground: var(--ink-900);
+  --muted: var(--surface-soft);
+  --muted-foreground: var(--ink-600);
+  --accent: #def3f1;
+  --accent-foreground: var(--teal-700);
+  --destructive: var(--rose-700);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--teal-500);
+  --radius: 16px;
   --shadow-sm: 0 1px 2px rgba(9, 30, 48, 0.06);
   --shadow-md: 0 14px 42px rgba(9, 30, 48, 0.09);
   --radius-sm: 10px;
@@ -61,6 +109,14 @@ body {
 button,
 input {
   font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex="-1"]:focus {
+  outline: 3px solid rgba(19, 149, 141, 0.3);
+  outline-offset: 3px;
 }
 
 button,

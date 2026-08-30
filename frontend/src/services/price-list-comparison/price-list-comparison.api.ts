@@ -23,6 +23,7 @@ export function comparePriceListsApi(
     method: "POST",
     body,
     signal,
+    includeCsrfToken: true,
     responseSchema: ComparisonResponseSchema,
     errorMessages: {
       network: "ارتباط با سرویس مقایسه برقرار نشد. از اجرای بک‌اند مطمئن شوید.",

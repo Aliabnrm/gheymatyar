@@ -20,7 +20,8 @@
 
 برش فعلی:
 
-    انتخاب دو XLSX
+    ورود و استخراج سازمان جاری از Cookie session امن
+    -> انتخاب دو XLSX
     -> اعتبارسنجی فایل
     -> تشخیص header
     -> استخراج ردیف استاندارد
@@ -43,10 +44,15 @@
 فناوری:
 
 - Python 3.12+, FastAPI, Pydantic
-- PostgreSQL, SQLAlchemy 2, Alembic در مرحله persistence
+- PostgreSQL, SQLAlchemy 2 async, asyncpg و Alembic فعال
 - Next.js App Router, TypeScript strict, RTL
 - pytest, Ruff, mypy, Vitest, ESLint, tsc
 - Docker Compose برای محیط محلی
+
+foundation موجود را حفظ کن: User، Organization، Membershipهای OWNER/OPERATOR،
+Session opaque و CSRF متصل به نشست پیاده‌سازی شده‌اند. compare عمومی نیست و
+Supplier/File/PriceListVersion هنوز persist نمی‌شوند. برای تغییر schema migration
+بساز و `organization_id` دریافتی از client را هرگز مدرک authorization ندان.
 
 fixture مرجع:
 

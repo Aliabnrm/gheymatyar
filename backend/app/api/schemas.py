@@ -18,7 +18,19 @@ class ApiErrorBody(BaseModel):
 
 
 class ApiErrorResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "error": {
+                    "code": "AUTH_REQUIRED",
+                    "message": "برای ادامه ابتدا وارد حساب خود شوید.",
+                    "details": {},
+                },
+                "request_id": "b7f4c2d88ee54f969f647a192f398ddd",
+            }
+        },
+    )
 
     error: ApiErrorBody
     request_id: str

@@ -8,14 +8,17 @@
 - بازار شروع: عمده‌فروش‌های شبکه و دوربین مداربسته تهران
 - پول مرجع: ریال ایران به‌صورت عدد صحیح
 - معماری: Modular Monolith
-- بک‌اند: FastAPI
+- بک‌اند: FastAPI، SQLAlchemy async و PostgreSQL
 - فرانت‌اند: Next.js و TypeScript
 - ورودی MVP: فقط XLSX
 - AI: در جریان Excel استفاده نمی‌شود
 
 ## برش قابل اجرای فعلی
 
-کاربر دو فایل XLSX را در داشبورد انتخاب می‌کند. بک‌اند فایل‌ها را به ساختار استاندارد تبدیل می‌کند و نتیجه مقایسه شامل کالاهای اضافه، حذف، افزایش/کاهش قیمت و تغییرات پرخطر بسته‌بندی را برمی‌گرداند.
+کاربر ابتدا با Cookie session امن وارد سازمان خود می‌شود و سپس دو فایل XLSX را
+در داشبورد انتخاب می‌کند. بک‌اند فایل‌ها را به ساختار استاندارد تبدیل می‌کند و
+نتیجه مقایسه شامل کالاهای اضافه، حذف، افزایش/کاهش قیمت و تغییرات پرخطر بسته‌بندی
+را برمی‌گرداند. فایل و نتیجه هنوز persist نمی‌شوند.
 
 فایل‌های fixtures/excel داده آزمایشی هستند و قیمت واقعی بازار محسوب نمی‌شوند.
 
@@ -38,10 +41,17 @@
 - uv
 - Node.js 20 یا جدیدتر
 - pnpm 9 یا جدیدتر
+- PostgreSQL 17 یا Docker
 
 راه‌اندازی:
 
     make bootstrap
+
+PostgreSQL و migration برای اجرای host:
+
+    docker compose up -d postgres
+    cp .env.example .env
+    make backend-migrate
 
 اجرای بک‌اند:
 
@@ -51,7 +61,16 @@
 
     make frontend-dev
 
-سپس داشبورد در http://localhost:3000 و مستندات API در http://localhost:8000/docs در دسترس است.
+سپس صفحه ثبت‌نام در http://localhost:3000/register، ورود در
+http://localhost:3000/login و مستندات API در http://localhost:8000/docs در دسترس
+است. ثبت‌نام عمومی در development فعال و در production به‌صورت پیش‌فرض خاموش است.
+
+برای ساخت OWNER اولیه production از prompt بدون echo استفاده کنید:
+
+    cd backend
+    uv run gheymatyar-create-owner \
+      --email owner@example.com \
+      --organization-name "شرکت نمونه"
 
 ## کنترل کیفیت
 
@@ -62,6 +81,10 @@
 
     cp .env.example .env
     make compose-up
+
+`make compose-up` ابتدا PostgreSQL را آماده و Alembic را به‌عنوان فرمان استقرار
+جدا اجرا می‌کند؛ خود برنامه در startup migration اجرا نمی‌کند. Redis و MinIO در
+Compose برای مراحل آینده باقی مانده‌اند، اما backend این slice به آن‌ها وابسته نیست.
 
 ## نقشه اسناد
 

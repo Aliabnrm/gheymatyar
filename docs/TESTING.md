@@ -15,6 +15,11 @@
 - محاسبه درصد با Decimal
 - invariantهای PriceListItem
 - اعتبارسنجی تنظیمات و origin
+- canonical email، password policy و نام سازمان
+- Argon2id verify/rehash و اجرای adapter async
+- entropy و hash-only بودن Session/CSRF token
+- fixed session expiry، role guard و CSRF binding
+- login limiter expiry، clear و bounded cleanup
 
 ### Fixture regression
 
@@ -33,6 +38,22 @@
 - انتشار و پاک‌سازی request id
 - اعمال تنظیمات app factory روی محدودیت upload
 - اجرای استخراج XLSX خارج از thread حلقه async
+- register اتمیک و conflict ایمیل بدون رکورد orphan
+- login موفق و خطای عمومی email/password/user غیرفعال
+- session منقضی، revokeشده و logout فقط نشست جاری
+- `/auth/me` و حذف membership سازمانی
+- Cookie flagها، CSRF missing/mismatch و Origin/CORS
+- عدم انتخاب تصادفی membership چندسازمانی
+- 429 و `Retry-After`
+- readiness موفق و شکست امن PostgreSQL
+
+### PostgreSQL integration
+
+تست persistence فقط روی PostgreSQL اجرا می‌شود و SQLite جایگزین آن نیست. پیش از
+pytest، migration با `alembic upgrade head` اجرا می‌شود. تست‌ها constraintهای
+unique، FK، role CHECK و timestamp timezone-aware را روی schema واقعی بررسی
+می‌کنند. CI یک PostgreSQL 17 service سالم دارد، migration را اجرا و سپس test suite
+را آغاز می‌کند.
 
 ### File security
 
@@ -49,6 +70,12 @@
 - summary
 - فیلتر جدول
 - نمایش error
+- `credentials: include` و CSRF header فقط برای mutationهای session-authenticated
+- Zod schemaهای register/login/me
+- فرم‌های login/register در validation، loading، success و خطاهای پایدار
+- auth bootstrap و protected dashboard بدون نمایش زودهنگام workspace
+- logout، پاک‌سازی cache و redirect ثابت هنگام 401/session expiration
+- policy عدم استفاده از localStorage/sessionStorage برای auth
 
 ### End-to-End
 
@@ -65,6 +92,8 @@
 Backend:
 
     cd backend
+    uv run alembic upgrade head
+    uv run alembic check
     uv run ruff format --check app tests
     uv run ruff check app tests
     uv run mypy app
@@ -72,10 +101,11 @@ Backend:
 
 Frontend:
 
-    vitest
-    eslint
-    tsc --noEmit
-    next build
+    pnpm format:check
+    pnpm lint
+    pnpm typecheck
+    pnpm test
+    pnpm build
 
 ## Coverage
 
@@ -94,3 +124,7 @@ Frontend:
 - formula injection در export
 - timeout OCR/Vision
 - prompt injection در سند
+
+tenant escape مربوط به entityهای سازمانی مانند Supplier هم‌زمان با اضافه‌شدن آن
+repositoryها افزوده می‌شود. در foundation فعلی، session با organization یا
+membership نامعتبر و membership مبهم پوشش داده شده است.

@@ -4,6 +4,8 @@ import { publicEnv } from "@/config/public-env";
 
 import { ApiRequestError, isAbortError } from "./api-error";
 import { ApiErrorPayloadSchema } from "./api-error.schema";
+import { dispatchAuthUnauthorized } from "./auth-session-event";
+import { withCsrfHeader } from "./csrf";
 
 const NETWORK_ERROR_MESSAGE =
   "ارتباط با سرویس برقرار نشد. از اجرای بک‌اند مطمئن شوید.";
@@ -19,6 +21,7 @@ interface ApiRequestOptions<TResponse> {
   signal?: AbortSignal;
   responseSchema: ZodType<TResponse>;
   errorMessages?: Partial<ApiErrorMessages>;
+  includeCsrfToken?: boolean;
 }
 
 interface ApiErrorMessages {
@@ -41,6 +44,7 @@ export async function apiRequest<TResponse>({
   signal,
   responseSchema,
   errorMessages,
+  includeCsrfToken = false,
 }: ApiRequestOptions<TResponse>): Promise<TResponse> {
   const messages = { ...defaultErrorMessages, ...errorMessages };
   const response = await sendRequest(
@@ -48,7 +52,11 @@ export async function apiRequest<TResponse>({
     {
       method,
       body,
-      headers,
+      credentials: "include",
+      headers:
+        includeCsrfToken && method !== "GET"
+          ? withCsrfHeader(headers)
+          : headers,
       signal,
     },
     messages.network,
@@ -58,6 +66,9 @@ export async function apiRequest<TResponse>({
   if (!response.ok) {
     const errorResult = ApiErrorPayloadSchema.safeParse(payload);
     if (errorResult.success) {
+      if (response.status === 401) {
+        dispatchAuthUnauthorized(errorResult.data.error.code);
+      }
       throw new ApiRequestError(errorResult.data.error.message, {
         code: errorResult.data.error.code,
         status: response.status,

@@ -6,6 +6,9 @@ from starlette.concurrency import run_in_threadpool
 from app.api.dependencies import get_request_settings
 from app.api.schemas import ApiErrorResponse
 from app.core.config import Settings
+from app.modules.accounts.domain.enums import OrganizationRole
+from app.modules.accounts.domain.models import CurrentAccountContext
+from app.modules.accounts.presentation.dependencies import require_roles
 
 from ..application.compare_price_lists import ComparePriceLists
 from .dependencies import get_compare_price_lists
@@ -20,6 +23,8 @@ router = APIRouter(prefix="/price-lists", tags=["price-lists"])
     response_model=ComparisonResponse,
     summary="مقایسه دو نسخه لیست قیمت Excel",
     responses={
+        401: {"model": ApiErrorResponse, "description": "ورود به حساب لازم است."},
+        403: {"model": ApiErrorResponse, "description": "اعتبار CSRF یا نقش معتبر نیست."},
         413: {"model": ApiErrorResponse, "description": "حجم فایل بیشتر از حد مجاز است."},
         422: {"model": ApiErrorResponse, "description": "فایل یا محتوای درخواست معتبر نیست."},
     },
@@ -29,7 +34,18 @@ async def compare_price_list_files(
     new_file: Annotated[UploadFile, File(description="نسخه جدید XLSX")],
     settings: Annotated[Settings, Depends(get_request_settings)],
     service: Annotated[ComparePriceLists, Depends(get_compare_price_lists)],
+    current_account: Annotated[
+        CurrentAccountContext,
+        Depends(
+            require_roles(
+                OrganizationRole.OWNER,
+                OrganizationRole.OPERATOR,
+                require_csrf=True,
+            )
+        ),
+    ],
 ) -> ComparisonResponse:
+    del current_account
     try:
         old_upload = await read_xlsx(old_file, max_bytes=settings.max_upload_bytes)
         new_upload = await read_xlsx(new_file, max_bytes=settings.max_upload_bytes)

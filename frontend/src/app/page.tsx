@@ -1,5 +1,5 @@
-import { PriceListComparisonPage } from "@/features/price-list-comparison";
+import { ProtectedDashboard } from "@/features/auth";
 
 export default function HomePage() {
-  return <PriceListComparisonPage />;
+  return <ProtectedDashboard />;
 }

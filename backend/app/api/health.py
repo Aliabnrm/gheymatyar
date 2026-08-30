@@ -1,6 +1,10 @@
-from fastapi import APIRouter
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.api.dependencies import get_database_runtime
 from app.api.schemas import HealthResponse
+from app.infrastructure.database import DatabaseRuntime
 
 router = APIRouter(tags=["health"])
 
@@ -11,5 +15,11 @@ async def live() -> HealthResponse:
 
 
 @router.get("/health/ready", response_model=HealthResponse, summary="بررسی آمادگی سرویس")
-async def ready() -> HealthResponse:
+async def ready(
+    database: Annotated[DatabaseRuntime, Depends(get_database_runtime)],
+) -> HealthResponse:
+    try:
+        await database.ping()
+    except Exception as exc:
+        raise HTTPException(status_code=503) from exc
     return HealthResponse()

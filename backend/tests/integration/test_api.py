@@ -1,14 +1,35 @@
 from pathlib import Path
 from threading import get_ident
+from uuid import uuid4
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import update
 
+from app.api.dependencies import get_database_runtime
 from app.core.config import Settings
 from app.main import create_app
+from app.modules.accounts.infrastructure.orm import OrganizationMembershipRecord
 from app.modules.price_lists.application.compare_price_lists import ComparePriceLists
 from app.modules.price_lists.infrastructure.xlsx_extractor import XlsxPriceListExtractor
 from app.modules.price_lists.presentation.dependencies import get_compare_price_lists
+from tests.conftest import TEST_DATABASE_URL
+
+
+async def authenticate(client: AsyncClient) -> dict[str, str]:
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"test-{uuid4().hex}@example.com",
+            "password": "a-secure-test-password",
+            "organization_name": "سازمان آزمون",
+        },
+    )
+    assert response.status_code == 201, response.text
+    csrf_token = client.cookies.get("gheymatyar_csrf")
+    assert csrf_token
+    return {"X-CSRF-Token": csrf_token}
 
 
 @pytest.mark.anyio
@@ -44,8 +65,10 @@ async def test_compare_endpoint(
     old_xlsx: Path,
     new_xlsx: Path,
 ) -> None:
+    headers = await authenticate(api_client)
     response = await api_client.post(
         "/api/v1/price-lists/compare",
+        headers=headers,
         files={
             "old_file": (
                 old_xlsx.name,
@@ -75,9 +98,43 @@ async def test_compare_endpoint(
 
 
 @pytest.mark.anyio
-async def test_rejects_wrong_extension(api_client: AsyncClient) -> None:
+async def test_operator_role_can_compare(
+    api_client: AsyncClient,
+    api_app: FastAPI,
+    old_xlsx: Path,
+    new_xlsx: Path,
+) -> None:
+    headers = await authenticate(api_client)
+    account = (await api_client.get("/api/v1/auth/me")).json()
+    database = api_app.state.database
+    async with database.session_factory() as session, session.begin():
+        await session.execute(
+            update(OrganizationMembershipRecord)
+            .where(
+                OrganizationMembershipRecord.user_id == account["user"]["id"],
+                OrganizationMembershipRecord.organization_id == account["organization"]["id"],
+            )
+            .values(role="OPERATOR")
+        )
+
     response = await api_client.post(
         "/api/v1/price-lists/compare",
+        headers=headers,
+        files={
+            "old_file": (old_xlsx.name, old_xlsx.read_bytes(), "application/octet-stream"),
+            "new_file": (new_xlsx.name, new_xlsx.read_bytes(), "application/octet-stream"),
+        },
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_rejects_wrong_extension(api_client: AsyncClient) -> None:
+    headers = await authenticate(api_client)
+    response = await api_client.post(
+        "/api/v1/price-lists/compare",
+        headers=headers,
         files={
             "old_file": ("old.csv", b"a,b", "text/csv"),
             "new_file": ("new.xlsx", b"PK\x03\x04bad", "application/octet-stream"),
@@ -90,8 +147,10 @@ async def test_rejects_wrong_extension(api_client: AsyncClient) -> None:
 
 @pytest.mark.anyio
 async def test_rejects_renamed_non_xlsx_content(api_client: AsyncClient) -> None:
+    headers = await authenticate(api_client)
     response = await api_client.post(
         "/api/v1/price-lists/compare",
+        headers=headers,
         files={
             "old_file": ("old.xlsx", b"not-an-xlsx", "application/octet-stream"),
             "new_file": ("new.xlsx", b"not-an-xlsx", "application/octet-stream"),
@@ -104,12 +163,19 @@ async def test_rejects_renamed_non_xlsx_content(api_client: AsyncClient) -> None
 
 @pytest.mark.anyio
 async def test_file_size_limit_uses_app_settings_and_stable_error_contract() -> None:
-    test_app = create_app(Settings(app_env="test", max_upload_bytes=1024))
+    test_app = create_app(
+        Settings(
+            app_env="test",
+            database_url=TEST_DATABASE_URL,
+            max_upload_bytes=1024,
+        )
+    )
     transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        auth_headers = await authenticate(client)
         response = await client.post(
             "/api/v1/price-lists/compare",
-            headers={"X-Request-ID": "large-upload"},
+            headers={"X-Request-ID": "large-upload", **auth_headers},
             files={
                 "old_file": ("../supplier.xlsx", b"x" * 1025, "application/octet-stream"),
                 "new_file": ("new.xlsx", b"PK\x03\x04bad", "application/octet-stream"),
@@ -129,9 +195,10 @@ async def test_file_size_limit_uses_app_settings_and_stable_error_contract() -> 
 
 @pytest.mark.anyio
 async def test_request_validation_uses_stable_error_contract(api_client: AsyncClient) -> None:
+    auth_headers = await authenticate(api_client)
     response = await api_client.post(
         "/api/v1/price-lists/compare",
-        headers={"X-Request-ID": "validation-request"},
+        headers={"X-Request-ID": "validation-request", **auth_headers},
     )
 
     assert response.status_code == 422
@@ -160,7 +227,7 @@ async def test_request_validation_uses_stable_error_contract(api_client: AsyncCl
 
 @pytest.mark.anyio
 async def test_unexpected_errors_are_safe_and_correlated() -> None:
-    test_app = create_app(Settings(app_env="test"))
+    test_app = create_app(Settings(app_env="test", database_url=TEST_DATABASE_URL))
 
     @test_app.get("/test-only/boom", include_in_schema=False)
     async def boom() -> None:
@@ -218,13 +285,15 @@ async def test_xlsx_processing_runs_outside_event_loop_thread(
             extraction_thread_ids.append(get_ident())
             return super().extract(content, filename=filename)
 
-    test_app = create_app(Settings(app_env="test"))
+    test_app = create_app(Settings(app_env="test", database_url=TEST_DATABASE_URL))
     service = ComparePriceLists(extractor=RecordingExtractor())
     test_app.dependency_overrides[get_compare_price_lists] = lambda: service
     transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        auth_headers = await authenticate(client)
         response = await client.post(
             "/api/v1/price-lists/compare",
+            headers=auth_headers,
             files={
                 "old_file": ("old.xlsx", old_xlsx.read_bytes(), "application/octet-stream"),
                 "new_file": ("new.xlsx", new_xlsx.read_bytes(), "application/octet-stream"),
@@ -242,3 +311,45 @@ def test_openapi_documents_stable_error_responses() -> None:
 
     assert "413" in responses
     assert "422" in responses
+    assert "401" in responses
+    assert "403" in responses
+
+
+@pytest.mark.anyio
+async def test_compare_requires_authentication(api_client: AsyncClient) -> None:
+    response = await api_client.post("/api/v1/price-lists/compare")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "AUTH_REQUIRED"
+
+
+@pytest.mark.anyio
+async def test_compare_requires_csrf_for_an_authenticated_session(
+    api_client: AsyncClient,
+) -> None:
+    await authenticate(api_client)
+
+    response = await api_client.post("/api/v1/price-lists/compare")
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "CSRF_VALIDATION_FAILED"
+
+
+@pytest.mark.anyio
+async def test_readiness_failure_is_safe_and_liveness_stays_public() -> None:
+    test_app = create_app(Settings(app_env="test", database_url=TEST_DATABASE_URL))
+
+    class UnavailableDatabase:
+        async def ping(self) -> None:
+            raise RuntimeError("database-url-with-secret")
+
+    test_app.dependency_overrides[get_database_runtime] = UnavailableDatabase
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        ready = await client.get("/health/ready", headers={"X-Request-ID": "db-down"})
+        live = await client.get("/health/live")
+
+    assert ready.status_code == 503
+    assert ready.json()["error"]["code"] == "SERVICE_NOT_READY"
+    assert "database-url-with-secret" not in ready.text
+    assert live.status_code == 200

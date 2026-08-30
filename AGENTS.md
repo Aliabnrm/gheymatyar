@@ -13,7 +13,7 @@ User-facing explanations, product copy, errors, and documentation intended for t
 The current vertical slice is:
 
 1. Select an old and a new XLSX supplier price list.
-2. Detect and map the header row.
+2. Detect and map the header row. 
 3. Extract product code, name, brand, sales unit, pack size, IRR price, availability, and notes.
 4. Validate deterministically.
 5. Match exact supplier product codes.

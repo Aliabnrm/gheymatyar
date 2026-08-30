@@ -36,7 +36,9 @@
 
 ## کنترل‌های HTTP فعلی
 
-- CORS فقط برای origin تنظیم‌شده و localhost در development
+- CORS با `allow_credentials` فقط برای origin تنظیم‌شده و localhost در development
+- Origin allowlist برای register/login مرورگری
+- session سمت سرور، Cookie HttpOnly و CSRF متصل به نشست
 - پذیرش و تولید request ID با الگوی محدود
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: no-referrer`
@@ -45,21 +47,60 @@
 
 ## Tenancy
 
-- هر داده persisted دارای organization_id است.
-- organization جاری از session معتبر استخراج می‌شود.
+- Session دارای `organization_id` است و به یک سازمان جاری متصل می‌شود.
+- organization جاری از session معتبر و membership متناظر استخراج می‌شود.
 - شناسه ارسالی client مجوز دسترسی محسوب نمی‌شود.
+- در هر درخواست، user فعال و membership همان user و `session.organization_id`
+  دوباره از PostgreSQL خوانده می‌شوند.
+- login فقط برای دقیقاً یک membership نشست می‌سازد؛ انتخاب تصادفی ممنوع است.
 - تست negative برای دسترسی tenant دیگر الزامی است.
 - query بدون tenant scope در repository چندسازمانی ممنوع است.
 
 ## Authentication و نقش‌ها
 
-مرحله persistence:
+نقش‌های MVP فقط `OWNER` و `OPERATOR` هستند. این محدودیت در enum دامنه، schema
+API، CHECK constraint دیتابیس و role guard اعمال می‌شود. هر دو نقش می‌توانند فایل
+XLSX را مقایسه کنند. approval و مدیریت عضو هنوز پیاده‌سازی نشده‌اند.
 
-- session امن HttpOnly
-- CSRF protection برای cookie auth
-- roleهای owner، admin، sales و reviewer
-- approval و تغییر rule نیازمند permission مشخص
-- rate limit برای login و upload
+کنترل‌های پیاده‌سازی‌شده:
+
+- password با Argon2id و کتابخانه `argon2-cffi` hash می‌شود؛ حد ۱۲ تا ۱۲۸ نویسه
+  پیش از Argon2 کنترل و hash/verify در threadpool اجرا می‌شود.
+- برای ایمیل ناشناخته dummy verification انجام می‌شود و پیام email ناشناخته،
+  password اشتباه و user غیرفعال یکسان است.
+- Session یک token opaque با حداقل ۳۲ بایت entropy دارد؛ فقط SHA-256 آن در
+  PostgreSQL است و token خام فقط در `gheymatyar_session` HttpOnly Cookie قرار می‌گیرد.
+- CSRF token مستقل است؛ فقط hash آن کنار Session ذخیره و مقدار خام در
+  `gheymatyar_csrf` قابل خواندن frontend قرار می‌گیرد.
+- Cookieها `SameSite=Lax` و `Path=/` هستند؛ در production به‌صورت پیش‌فرض
+  `Secure` و در development/test برای HTTP محلی بدون Secure هستند.
+- TTL ثابت و پیش‌فرض هفت روز است؛ sliding session، JWT، refresh token و storage
+  جاوااسکریپت وجود ندارد.
+- logout فقط نشست جاری را با `revoked_at` می‌بندد و هر دو Cookie را حذف می‌کند.
+- register در production به‌صورت پیش‌فرض خاموش است. onboarding مالک با command
+  `gheymatyar-create-owner`، password بدون echo و همان use case ثبت‌نام انجام می‌شود.
+
+برای درخواست‌های unsafe مبتنی بر Session، SameSite به‌تنهایی کافی نیست. logout و
+compare باید Cookie CSRF، header `X-CSRF-Token` و hash همان Session را با مقایسه
+constant-time معتبر کنند. نبودن یا mismatch بدون نمایش token با 403 رد می‌شود.
+
+استقرار production باید frontend و API را روی HTTPS و site سازگار با
+`SameSite=Lax` ارائه کند. `WEB_ORIGIN` باید origin دقیق frontend باشد و wildcard
+مجاز نیست. TLS/HSTS در reverse proxy پایان می‌یابد؛ Cookie session Domain ندارد.
+
+## کنترل brute force
+
+login limiter فعلی برای پایلوت تک‌پردازه طراحی شده است:
+
+- کلید، SHA-256 ترکیب IP مستقیم `request.client` و ایمیل canonical/casefold است؛
+  raw email ذخیره نمی‌شود.
+- `X-Forwarded-For` بدون trusted-proxy configuration خوانده نمی‌شود.
+- پیش‌فرض پنج شکست در پانزده دقیقه، حافظه bounded و پاک‌سازی entry منقضی است.
+- موفقیت شمارنده همان کلید را پاک می‌کند و پاسخ محدودشده 429 و `Retry-After` دارد.
+
+این limiter بین processها یا hostها توزیع‌شده نیست. پیش از scale افقی یا انتشار
+عمومی، rate limit در reverse proxy یا adapter توزیع‌شده لازم است. Redis صرفاً برای
+حل این مسئله وارد runtime این slice نشده است.
 
 ## Secrets
 
@@ -110,4 +151,6 @@
 - TLS
 - backup/restore
 - خطا بدون stack trace
-- حساب admin بدون رمز پیش‌فرض
+- ساخت OWNER اولیه با password اختصاصی و ثبت‌نام عمومی خاموش
+- `AUTH_COOKIE_SECURE=true` و HTTPS/site سازگار
+- rate limit توزیع‌شده یا reverse-proxy پیش از scale افقی

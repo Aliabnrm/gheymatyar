@@ -12,6 +12,23 @@ jobs:
   backend:
     name: Backend quality
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: gheymatyar
+          POSTGRES_USER: gheymatyar
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gheymatyar -d gheymatyar"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://gheymatyar:ci-only-password@localhost:5432/gheymatyar
     defaults:
       run:
         working-directory: backend
@@ -23,6 +40,9 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
       - run: uv sync --frozen --dev
+      - run: uv run alembic upgrade head
+      - run: uv run alembic check
+      - run: uv run ruff format --check app tests
       - run: uv run ruff check app tests
       - run: uv run mypy app
       - run: uv run pytest
