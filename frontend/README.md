@@ -23,10 +23,12 @@ frontend/
 │   │   │   ├── guards/               # bootstrap و محافظ UX مسیرها
 │   │   │   ├── model/                # route و labelهای type-safe
 │   │   │   └── index.ts              # public API قابلیت
-│   │   └── price-list-comparison/    # قابلیت مقایسه XLSX
+│   │   ├── price-list-comparison/    # قابلیت مقایسه XLSX
+│   │   └── suppliers/                # list/create/detail/update تأمین‌کننده
 │   ├── services/
 │   │   ├── auth/                     # schema، API و TanStack hooks
-│   │   └── price-list-comparison/
+│   │   ├── price-list-comparison/
+│   │   └── suppliers/
 │   ├── lib/                          # utility استاندارد shadcn مانند cn
 │   └── utils/                        # ابزارهای خالص برنامه
 └── tests/
@@ -86,6 +88,11 @@ frontend/
   cache auth و داده comparison را پاک و فقط به مسیر ثابت `/login` هدایت می‌کند.
 - هیچ Auth state یا token در localStorage یا sessionStorage نگهداری نمی‌شود.
 - redirectهای client فقط UX هستند؛ authorization واقعی در FastAPI و PostgreSQL است.
+
+صفحات محافظت‌شده `/suppliers`، `/suppliers/new` و `/suppliers/[supplierId]` از
+`ProtectedAppShell` مشترک استفاده می‌کنند. server state تأمین‌کننده با query-key
+factory و schemaهای Zod مدیریت و هنگام logout یا 401 پاک می‌شود. فرم نام فقط از
+React Hook Form، `Controller` و primitiveهای source-owned shadcn استفاده می‌کند.
 
 فرم‌ها RTL، دارای label واقعی، autocomplete، validation محلی، loading/disabled،
 `role=alert` و پیام‌های فارسی خطای credential، rate limit، registration disabled،

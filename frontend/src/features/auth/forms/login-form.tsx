@@ -89,7 +89,7 @@ export function LoginForm() {
       <Button className="h-11 w-full" type="submit" disabled={isPending}>
         <AsyncButtonContent
           isPending={isPending}
-          idleLabel="ورود"
+          idleLabel="ورود امن"
           pendingLabel="در حال ورود…"
         />
       </Button>

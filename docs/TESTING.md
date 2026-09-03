@@ -20,6 +20,7 @@
 - entropy و hash-only بودن Session/CSRF token
 - fixed session expiry، role guard و CSRF binding
 - login limiter expiry، clear و bounded cleanup
+- normalization نام Supplier و update command
 
 ### Fixture regression
 
@@ -46,6 +47,8 @@
 - عدم انتخاب تصادفی membership چندسازمانی
 - 429 و `Retry-After`
 - readiness موفق و شکست امن PostgreSQL
+- CRUD تأمین‌کننده، role matrix، CSRF و پاسخ‌های پایدار
+- tenant escape با UUID تأمین‌کننده سازمان دیگر
 
 ### PostgreSQL integration
 
@@ -76,6 +79,8 @@ unique، FK، role CHECK و timestamp timezone-aware را روی schema واقع
 - auth bootstrap و protected dashboard بدون نمایش زودهنگام workspace
 - logout، پاک‌سازی cache و redirect ثابت هنگام 401/session expiration
 - policy عدم استفاده از localStorage/sessionStorage برای auth
+- schema/API/query cache و فرم React Hook Form تأمین‌کننده
+- loading، empty، read-only و mutation stateهای Supplier
 
 ### End-to-End
 
@@ -125,6 +130,6 @@ Frontend:
 - timeout OCR/Vision
 - prompt injection در سند
 
-tenant escape مربوط به entityهای سازمانی مانند Supplier هم‌زمان با اضافه‌شدن آن
-repositoryها افزوده می‌شود. در foundation فعلی، session با organization یا
-membership نامعتبر و membership مبهم پوشش داده شده است.
+tenant escape برای Supplier با list/get/update سازمان دیگر پوشش داده شده است.
+session با organization یا membership نامعتبر و membership مبهم نیز در تست‌های
+foundation باقی مانده است.

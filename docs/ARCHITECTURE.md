@@ -23,14 +23,17 @@
        |   |-- application
        |   |-- domain
        |   +-- XLSX infrastructure
+       |-- suppliers module
+       |   |-- tenant-scoped CRUD use cases
+       |   +-- SQLAlchemy repository
        +-- SQLAlchemy AsyncSession / asyncpg
                  |
                  v
              PostgreSQL 17+
 
-PostgreSQL منبع persistence فعال حساب‌ها و نشست‌ها است. مقایسه XLSX همچنان
-درخواست‌محور و بدون ذخیره فایل یا نتیجه انجام می‌شود؛ persistence تأمین‌کننده و
-لیست قیمت به زیرمرحله بعدی موکول است.
+PostgreSQL منبع persistence فعال حساب‌ها، نشست‌ها و تأمین‌کنندگان است. مقایسه
+XLSX همچنان درخواست‌محور و بدون ذخیره فایل یا نتیجه انجام می‌شود؛ اتصال import و
+نسخه لیست قیمت به تأمین‌کننده به زیرمرحله بعدی موکول است.
 
 ## قانون وابستگی
 
@@ -62,7 +65,17 @@ Domain نباید FastAPI، SQLAlchemy، openpyxl، Redis، S3 یا SDK مدل A
 
 دریافت امن فایل جزئی از مرز presentation همین قابلیت است؛ تا زمانی که چرخه import
 مستقل و persistence فایل نداریم، ماژول جداگانه‌ای برای imports ساخته نمی‌شود.
-suppliers و quotations هنوز کد یا جدول ندارند.
+
+### suppliers
+
+- مدل و normalization مستقل نام تأمین‌کننده
+- use caseهای create، list، detail و update
+- repository با organization scope اجباری در همه امضاها و queryها
+- soft deactivation و uniqueness نام canonical در هر سازمان
+- routeهای خواندنی OWNER/OPERATOR و mutationهای OWNER با CSRF
+
+quotations هنوز کد یا جدول ندارند. اتصال فایل و import به Supplier مربوط به Sprint
+بعدی است.
 
 ## راه‌اندازی برنامه و مرزهای مشترک
 
@@ -117,6 +130,7 @@ lifespan در shutdown engine را dispose می‌کند. migration خودکار
 - users
 - organization_memberships
 - sessions
+- suppliers
 
 جدول‌های زیرمرحله‌های بعد:
 
@@ -140,6 +154,8 @@ lifespan در shutdown engine را dispose می‌کند. migration خودکار
 - POST /api/v1/auth/login
 - POST /api/v1/auth/logout
 - GET /api/v1/auth/me
+- GET/POST /api/v1/suppliers
+- GET/PATCH /api/v1/suppliers/{supplier_id}
 - POST /api/v1/price-lists/compare
 
 `live` عمومی و مستقل از دیتابیس است؛ `ready` با `SELECT 1` PostgreSQL را بررسی

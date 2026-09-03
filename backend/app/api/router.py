@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.health import router as health_router
 from app.modules.accounts.presentation.router import router as accounts_router
 from app.modules.price_lists.presentation.router import router as price_lists_router
+from app.modules.suppliers.presentation.router import router as suppliers_router
 
 root_router = APIRouter()
 root_router.include_router(health_router)
@@ -10,4 +11,5 @@ root_router.include_router(health_router)
 api_v1_router = APIRouter(prefix="/api/v1")
 api_v1_router.include_router(accounts_router)
 api_v1_router.include_router(price_lists_router)
+api_v1_router.include_router(suppliers_router)
 root_router.include_router(api_v1_router)

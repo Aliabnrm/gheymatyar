@@ -59,8 +59,17 @@ export function useLogoutMutation() {
 
 export function clearAuthenticatedData(queryClient: QueryClient): void {
   queryClient.removeQueries({ queryKey: ["price-list-comparison"] });
+  queryClient.removeQueries({ queryKey: ["suppliers"] });
   removeComparisonMutations(queryClient);
+  removeSupplierMutations(queryClient);
   queryClient.setQueryData(currentAccountQueryKey, null);
+}
+
+function removeSupplierMutations(queryClient: QueryClient): void {
+  const cache = queryClient.getMutationCache();
+  for (const mutation of cache.findAll({ mutationKey: ["suppliers"] })) {
+    cache.remove(mutation);
+  }
 }
 
 function storeAuthenticatedAccount(
@@ -69,7 +78,9 @@ function storeAuthenticatedAccount(
 ): void {
   queryClient.setQueryData(currentAccountQueryKey, account);
   queryClient.removeQueries({ queryKey: ["price-list-comparison"] });
+  queryClient.removeQueries({ queryKey: ["suppliers"] });
   removeComparisonMutations(queryClient);
+  removeSupplierMutations(queryClient);
 }
 
 function removeComparisonMutations(queryClient: QueryClient): void {

@@ -44,4 +44,14 @@ describe("frontend source boundaries", () => {
     expect(authService).not.toMatch(/@\/features\//);
     expect(authService).not.toMatch(/@\/components\//);
   });
+
+  it("keeps supplier transport out of components and tests out of source", () => {
+    const supplierFeature = readTypeScriptTree("src/features/suppliers");
+    const supplierService = readTypeScriptTree("src/services/suppliers");
+
+    expect(supplierFeature).not.toMatch(/\bfetch\s*\(/);
+    expect(supplierFeature).not.toMatch(/\.register\s*\(/);
+    expect(supplierService).not.toMatch(/@\/features\//);
+    expect(supplierService).not.toMatch(/@\/components\//);
+  });
 });

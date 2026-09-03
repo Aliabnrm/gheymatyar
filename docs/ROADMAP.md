@@ -32,7 +32,7 @@
 1. PostgreSQL و Alembic migration — انجام‌شده
 2. Auth امن با session سمت سرور — انجام‌شده
 3. Organization Membership و نقش‌های OWNER/OPERATOR — انجام‌شده
-4. Supplier — شروع‌نشده
+4. Supplier — انجام‌شده
 5. PriceListVersion و نگهداری فایل اصلی — شروع‌نشده
 6. import state machine و template نگاشت ستون — شروع‌نشده
 7. Draft، Approval و Audit Log — شروع‌نشده

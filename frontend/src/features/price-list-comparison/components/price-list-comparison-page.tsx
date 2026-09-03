@@ -1,35 +1,8 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
-
 import { ComparisonWorkspace } from "./comparison-workspace";
 
-export function PriceListComparisonPage({
-  accountActions,
-}: {
-  accountActions?: ReactNode;
-}) {
+export function PriceListComparisonPage() {
   return (
     <>
-      <header className="topbar">
-        <div className="topbar__inner">
-          <Link className="brand" href="/" aria-label="قیمت‌یار، صفحه اصلی">
-            <span className="brand__mark" aria-hidden="true">
-              ق
-            </span>
-            <span>
-              <strong>قیمت‌یار</strong>
-              <small>دستیار قیمت عمده‌فروشی</small>
-            </span>
-          </Link>
-          {accountActions ?? (
-            <div className="topbar__status">
-              <span className="status-dot" aria-hidden="true" />
-              محیط آزمایشی · تمام مبالغ ریال
-            </div>
-          )}
-        </div>
-      </header>
-
       <main>
         <section className="hero">
           <div className="hero__glow" aria-hidden="true" />

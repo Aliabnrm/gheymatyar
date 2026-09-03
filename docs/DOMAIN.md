@@ -1,5 +1,14 @@
 # مدل دامنه
 
+## Supplier
+
+تأمین‌کننده موجودیتی متعلق به Organization است و با UUID عمومی شناخته می‌شود.
+نام نمایشی با NFKC، حروف فارسی و فاصله canonical می‌شود و `normalized_name` برای
+یکتایی casefold شده است. ترکیب `organization_id + normalized_name` یکتا است؛ نام
+یکسان در دو سازمان مجاز است. Supplier حذف فیزیکی نمی‌شود و با `is_active` از
+چرخه استفاده خارج یا دوباره فعال می‌شود. نام رکورد غیرفعال برای حفظ هویت تاریخی
+همچنان رزرو می‌ماند.
+
 ## PriceListItem
 
 ردیف استاندارد مستقل از قالب منبع:
@@ -45,6 +54,8 @@
     supplier_id + normalized_product_code
 
 در مقایسه stateless فعلی، یک تأمین‌کننده فرض می‌شود و کلید همان normalized_product_code است.
+اتصال import و کد کالا به `supplier_id` در Sprint 2 انجام می‌شود؛ ایجاد Supplier
+در Sprint 1 رفتار endpoint مقایسه فعلی را تغییر نمی‌دهد.
 
 ## نرمال‌سازی متن فارسی
 

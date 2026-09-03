@@ -86,6 +86,38 @@ allowlist `WEB_ORIGIN` باشد.
   را در `X-CSRF-Token` می‌فرستد. header، Cookie و hash متصل به نشست باید با هم
   برابر باشند؛ در غیر این صورت پاسخ `403 CSRF_VALIDATION_FAILED` است.
 
+## تأمین‌کنندگان
+
+تمام routeها سازمان را از Session معتبر می‌گیرند و هیچ `organization_id` از
+client نمی‌پذیرند. OWNER دسترسی read/write و OPERATOR دسترسی read-only دارد.
+
+    GET /api/v1/suppliers?status=active&limit=20&offset=0
+
+`status` یکی از `active`، `inactive` یا `all` است. پاسخ شامل `items`، `total`،
+`limit` و `offset` است و بر اساس نام normalized و UUID مرتب می‌شود.
+
+    POST /api/v1/suppliers
+    X-CSRF-Token: <value of gheymatyar_csrf cookie>
+    {"name":"فناوران شبکه"}
+
+ایجاد موفق `201` است. نام canonical در هر سازمان یکتا است و conflict با
+`409 SUPPLIER_NAME_ALREADY_EXISTS` برمی‌گردد.
+
+    GET /api/v1/suppliers/{supplier_id}
+    PATCH /api/v1/suppliers/{supplier_id}
+    {"name":"نام جدید","is_active":false}
+
+PATCH فقط برای OWNER و نیازمند CSRF است. حداقل یکی از `name` یا `is_active` باید
+وجود داشته باشد. غیرفعال‌سازی رکورد را حذف نمی‌کند. شناسه ناموجود یا متعلق به
+سازمان دیگر `404 SUPPLIER_NOT_FOUND` می‌دهد تا وجود داده tenant دیگر افشا نشود.
+
+کدهای پایدار Supplier:
+
+- `SUPPLIER_NOT_FOUND`
+- `SUPPLIER_NAME_ALREADY_EXISTS`
+- `INVALID_SUPPLIER_NAME`
+- `SUPPLIER_UPDATE_EMPTY`
+
 ## مقایسه دو لیست قیمت
 
     POST /api/v1/price-lists/compare
@@ -168,10 +200,12 @@ client می‌تواند header اختیاری `X-Request-ID` شامل حداک�
 
 - 200: ورود، `/auth/me` یا مقایسه موفق
 - 201: ثبت‌نام اولیه موفق
+- 201: ایجاد تأمین‌کننده موفق
 - 204: خروج موفق بدون body
 - 401: credential یا نشست/context نامعتبر
 - 403: ثبت‌نام خاموش، origin نامعتبر، CSRF یا نقش نامعتبر
 - 409: ایمیل canonical تکراری
+- 409: نام canonical تأمین‌کننده در همان سازمان تکراری
 - 413: حجم فایل بیش از حد مجاز
 - 422: نوع، ساختار یا داده نامعتبر
 - 429: محدودیت تلاش ورود، همراه `Retry-After`

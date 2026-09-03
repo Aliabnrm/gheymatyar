@@ -20,6 +20,12 @@ from app.modules.accounts.application.validate_csrf import ValidateCsrf
 from app.modules.accounts.infrastructure.passwords import Argon2PasswordHasher
 from app.modules.accounts.infrastructure.repositories import SqlAlchemyAccountStore
 from app.modules.accounts.infrastructure.tokens import SecureTokenService
+from app.modules.suppliers.application.create_supplier import CreateSupplier
+from app.modules.suppliers.application.get_supplier import GetSupplier
+from app.modules.suppliers.application.list_suppliers import ListSuppliers
+from app.modules.suppliers.application.services import SupplierServices
+from app.modules.suppliers.application.update_supplier import UpdateSupplier
+from app.modules.suppliers.infrastructure.repositories import SqlAlchemySupplierStore
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -29,6 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     store = SqlAlchemyAccountStore(database.session_factory)
     password_hasher = Argon2PasswordHasher()
     token_service = SecureTokenService()
+    supplier_store = SqlAlchemySupplierStore(database.session_factory)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -68,11 +75,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         window_seconds=resolved_settings.auth_login_window_seconds,
         max_entries=resolved_settings.auth_login_limiter_max_entries,
     )
+    application.state.supplier_services = SupplierServices(
+        create=CreateSupplier(supplier_store),
+        list=ListSuppliers(supplier_store),
+        get=GetSupplier(supplier_store),
+        update=UpdateSupplier(supplier_store),
+    )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(resolved_settings.allowed_origins),
         allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
         allow_headers=["Content-Type", "Accept", "X-Request-ID", "X-CSRF-Token"],
         expose_headers=["X-Request-ID"],
     )

@@ -10,6 +10,7 @@ from app.core.config import Settings
 from app.core.middleware import add_security_headers, get_request_id
 from app.modules.accounts.domain.errors import AccountError, AccountErrorCode
 from app.modules.price_lists.domain.errors import PriceListError, PriceListErrorCode
+from app.modules.suppliers.domain.errors import SupplierError, SupplierErrorCode
 
 _logger = logging.getLogger(__name__)
 
@@ -89,6 +90,24 @@ async def handle_account_error(request: Request, exc: Exception) -> JSONResponse
     )
 
 
+async def handle_supplier_error(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, SupplierError):
+        raise exc
+    status_codes = {
+        SupplierErrorCode.SUPPLIER_NOT_FOUND: 404,
+        SupplierErrorCode.SUPPLIER_NAME_ALREADY_EXISTS: 409,
+        SupplierErrorCode.INVALID_SUPPLIER_NAME: 422,
+        SupplierErrorCode.SUPPLIER_UPDATE_EMPTY: 422,
+    }
+    return _error_response(
+        request,
+        status_code=status_codes[exc.code],
+        code=exc.code.value,
+        message=exc.message,
+        details=exc.details,
+    )
+
+
 async def handle_request_validation_error(
     request: Request,
     exc: Exception,
@@ -151,6 +170,7 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(PriceListError, handle_price_list_error)
     app.add_exception_handler(AccountError, handle_account_error)
+    app.add_exception_handler(SupplierError, handle_supplier_error)
     app.add_exception_handler(RequestValidationError, handle_request_validation_error)
     app.add_exception_handler(StarletteHTTPException, handle_http_error)
     app.add_exception_handler(Exception, handle_unexpected_error)

@@ -2,7 +2,8 @@
 
 این سرویس FastAPI حساب و نشست سازمانی را در PostgreSQL نگهداری می‌کند و برای کاربر
 احراز هویت‌شده دو فایل XLSX را اعتبارسنجی، استخراج و مقایسه می‌کند. فایل و نتیجه
-مقایسه هنوز persist نمی‌شوند. Redis، object storage و worker جزو runtime این برش
+مقایسه هنوز persist نمی‌شوند. تأمین‌کنندگان سازمانی در PostgreSQL نگهداری می‌شوند.
+Redis، object storage و worker جزو runtime این برش
 نیستند.
 
 ## ساختار
@@ -25,11 +26,12 @@
     │   ├── application/         # use case، DTO و portهای حساب
     │   ├── domain/              # role، context و خطاهای مستقل
     │   └── infrastructure/      # SQLAlchemy، Argon2id و token امن
-    └── modules/price_lists/
-        ├── presentation/       # multipart، schema، DI و threadpool boundary
-        ├── application/        # use case مقایسه و extractor port
-        ├── domain/             # مدل، invariant، normalization و diff
-        └── infrastructure/     # پیاده‌سازی امن openpyxl
+    ├── modules/price_lists/
+    │   ├── presentation/       # multipart، schema، DI و threadpool boundary
+    │   ├── application/        # use case مقایسه و extractor port
+    │   ├── domain/             # مدل، invariant، normalization و diff
+    │   └── infrastructure/     # پیاده‌سازی امن openpyxl
+    └── modules/suppliers/      # CRUD سازمانی، normalization و soft deactivation
 
 قانون وابستگی:
 
@@ -89,3 +91,10 @@ CLI از Register use case اصلی استفاده و نشست موقت بدون
 
 تست‌های persistence روی PostgreSQL واقعی اجرا می‌شوند؛ SQLite پشتیبانی نمی‌شود.
 CI PostgreSQL 17 را آماده و migration را پیش از pytest اجرا می‌کند.
+
+## Supplier
+
+routeهای `GET/POST /api/v1/suppliers` و
+`GET/PATCH /api/v1/suppliers/{supplier_id}` با organization جاری محدود می‌شوند.
+OWNER مجاز به write و OPERATOR مجاز به read است. POST/PATCH به CSRF نیاز دارند و
+حذف فیزیکی Supplier وجود ندارد.

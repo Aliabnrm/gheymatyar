@@ -29,13 +29,13 @@ export function RegisterForm() {
   const errorRef = useRef<HTMLDivElement>(null);
 
   const registration = useRegisterMutation();
-  
+
   const form = useForm<RegisterFormInput, unknown, RegisterInput>({
     resolver: zodResolver(RegisterInputSchema),
     defaultValues: REGISTER_DEFAULT_VALUES,
     mode: "onSubmit",
   });
-  
+
   const isPending = form.formState.isSubmitting || registration.isPending;
 
   useEffect(() => {

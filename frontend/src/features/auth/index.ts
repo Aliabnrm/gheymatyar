@@ -3,5 +3,6 @@ export { AuthFeedback } from "./components/auth-feedback";
 export { LoginForm } from "./forms/login-form";
 export { RegisterForm } from "./forms/register-form";
 export { ProtectedDashboard } from "./guards/protected-dashboard";
+export { ProtectedAppShell } from "./guards/protected-app-shell";
 export { PublicAuthGate } from "./guards/public-auth-gate";
 export { UnauthorizedSessionListener } from "./guards/unauthorized-session-listener";

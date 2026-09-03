@@ -55,6 +55,9 @@
 - login فقط برای دقیقاً یک membership نشست می‌سازد؛ انتخاب تصادفی ممنوع است.
 - تست negative برای دسترسی tenant دیگر الزامی است.
 - query بدون tenant scope در repository چندسازمانی ممنوع است.
+- تمام متدهای Supplier repository، `organization_id` جاری را اجباری دریافت و
+  شرط آن را داخل SQL اعمال می‌کنند. شناسه tenant دیگر مانند شناسه ناموجود پاسخ
+  داده می‌شود.
 
 ## Authentication و نقش‌ها
 
@@ -62,7 +65,13 @@
 API، CHECK constraint دیتابیس و role guard اعمال می‌شود. هر دو نقش می‌توانند فایل
 XLSX را مقایسه کنند. approval و مدیریت عضو هنوز پیاده‌سازی نشده‌اند.
 
-کنترل‌های پیاده‌سازی‌شده:
+کنترل دسترسی Supplier:
+
+در Supplier، هر دو نقش list/detail را می‌خوانند اما فقط OWNER مجاز به create،
+rename و تغییر وضعیت است. POST/PATCH علاوه بر role guard به CSRF معتبر نیاز دارند.
+غیرفعال‌سازی جایگزین حذف سخت است تا هویت و ارجاع تاریخی آینده حفظ شود.
+
+کنترل‌های Auth پیاده‌سازی‌شده:
 
 - password با Argon2id و کتابخانه `argon2-cffi` hash می‌شود؛ حد ۱۲ تا ۱۲۸ نویسه
   پیش از Argon2 کنترل و hash/verify در threadpool اجرا می‌شود.
