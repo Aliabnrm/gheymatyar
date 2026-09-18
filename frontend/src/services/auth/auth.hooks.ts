@@ -60,8 +60,10 @@ export function useLogoutMutation() {
 export function clearAuthenticatedData(queryClient: QueryClient): void {
   queryClient.removeQueries({ queryKey: ["price-list-comparison"] });
   queryClient.removeQueries({ queryKey: ["suppliers"] });
+  queryClient.removeQueries({ queryKey: ["price-list-imports"] });
   removeComparisonMutations(queryClient);
   removeSupplierMutations(queryClient);
+  removePriceListImportMutations(queryClient);
   queryClient.setQueryData(currentAccountQueryKey, null);
 }
 
@@ -79,8 +81,19 @@ function storeAuthenticatedAccount(
   queryClient.setQueryData(currentAccountQueryKey, account);
   queryClient.removeQueries({ queryKey: ["price-list-comparison"] });
   queryClient.removeQueries({ queryKey: ["suppliers"] });
+  queryClient.removeQueries({ queryKey: ["price-list-imports"] });
   removeComparisonMutations(queryClient);
   removeSupplierMutations(queryClient);
+  removePriceListImportMutations(queryClient);
+}
+
+function removePriceListImportMutations(queryClient: QueryClient): void {
+  const cache = queryClient.getMutationCache();
+  for (const mutation of cache.findAll({
+    mutationKey: ["price-list-imports"],
+  })) {
+    cache.remove(mutation);
+  }
 }
 
 function removeComparisonMutations(queryClient: QueryClient): void {

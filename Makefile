@@ -1,4 +1,4 @@
-.PHONY: bootstrap backend-migrate backend-dev frontend-dev test test-backend test-frontend lint format compose-up compose-down
+.PHONY: bootstrap backend-migrate backend-dev frontend-dev test test-backend test-frontend lint format compose-deps compose-up compose-down
 
 bootstrap:
 	cd backend && uv sync --dev
@@ -33,10 +33,13 @@ format:
 	cd backend && uv run ruff check --fix app tests
 	pnpm --dir frontend format
 
-compose-up:
-	docker compose up -d postgres
+compose-deps:
+	docker compose up -d postgres minio
+	docker compose run --rm minio-init
+
+compose-up: compose-deps
 	docker compose run --rm --build backend uv run --no-sync alembic upgrade head
-	docker compose up --build
+	docker compose up --build backend frontend
 
 compose-down:
 	docker compose down

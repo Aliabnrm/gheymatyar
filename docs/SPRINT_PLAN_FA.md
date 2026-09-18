@@ -56,11 +56,11 @@
 - User، Organization، Membership و نقش‌های `OWNER` و `OPERATOR`
 - PostgreSQL، SQLAlchemy async و Alembic foundation
 - React Query، Zod schema و ساختار استاندارد service در فرانت‌اند
+- مدیریت tenant-scoped تأمین‌کننده
+- ذخیره فایل اصلی، Import Draft و ردیف‌های استخراج‌شده
 
 ### هنوز انجام‌نشده
 
-- مدیریت تأمین‌کننده
-- ذخیره فایل اصلی و نتیجه import
 - نگهداری نسخه‌های immutable قیمت
 - workflow تأیید و audit log
 - داشبورد نسخه قیمت معتبر
@@ -87,7 +87,7 @@
 
 ## Sprint 0 — تثبیت foundation فعلی
 
-وضعیت: تقریباً انجام‌شده؛ قبل از ادامه محصول باید فقط بازبینی شود.
+وضعیت: انجام‌شده.
 
 هدف:
 اطمینان از اینکه پایه فعلی محصول سالم، قابل اجرا و قابل توسعه است.
@@ -172,8 +172,12 @@
 
 ## Sprint 2 — ذخیره فایل و Import Draft
 
+وضعیت: انجام‌شده در 2026-09-03.
+
 هدف:
-تبدیل compare موقت به جریان import پایدار؛ فایل قیمت جدید به Supplier وصل شود و نتیجه استخراج در دیتابیس ذخیره شود.
+افزودن جریان Import پایدار در کنار compare موقت؛ فایل قیمت جدید به Supplier وصل،
+فایل اصلی در object storage خصوصی و نتیجه استخراج در PostgreSQL ذخیره شود. endpoint
+compare موجود همچنان stateless و مستقل باقی می‌ماند.
 
 مشکل کاربر که حل می‌شود:
 کاربر مجبور نیست هر بار فایل قبلی و جدید را دوباره انتخاب کند. سیستم تاریخچه import دارد و می‌داند هر داده از کدام فایل آمده است.
@@ -187,21 +191,26 @@
 - نمایش وضعیت import
 - مشاهده ردیف‌های استخراج‌شده قبل از تأیید
 - نمایش خطاهای مسدودکننده import
+- مشاهده تاریخچه و ردیف‌ها پس از refresh یا ورود دوباره
 
 خروجی فنی:
 
 - جدول‌های `source_documents`، `import_runs` و `extracted_rows`
 - محاسبه hash فایل برای idempotency و audit
-- ذخیره metadata فایل، نه مسیر خام کاربر
+- ذخیره فایل اصلی در bucket خصوصی و metadata/object key تولیدشده سرور در PostgreSQL
+- وضعیت‌های فقط‌خواندنی `DRAFT` و `FAILED`
+- queryهای tenant-scoped و ذخیره all-or-nothing ردیف‌ها
 - استفاده از migration
 - حفظ extractor فعلی Excel به‌عنوان infrastructure adapter
 
 معیار پذیرش:
 
-- فایل اصلی یا metadata آن به Supplier وصل باشد.
+- فایل اصلی و metadata آن به Organization و Supplier متصل باشند.
 - import ناقص یا خطادار به نسخه قیمت معتبر تبدیل نشود.
 - duplicate product code مانع approval شود.
 - محتوای کامل فایل یا قیمت‌های حجیم در log ثبت نشود.
+- OWNER و OPERATOR بتوانند برای Supplier فعال upload و history/detail/rows را ببینند.
+- فایل safety-invalid ذخیره نشود و خطای کیفیت داده FAILED بدون partial row بسازد.
 
 مفاهیم یادگیری:
 
@@ -212,6 +221,8 @@
 - جداسازی domain از infrastructure
 
 ## Sprint 3 — نگاشت ستون و کیفیت داده
+
+وضعیت: پیاده‌سازی‌شده در 2026-09-06؛ گزارش کنترل کیفیت در docs/TESTING.md.
 
 هدف:
 پشتیبانی از تفاوت قالب فایل تأمین‌کننده‌ها بدون تبدیل سیستم به ابزار پیچیده ETL.
@@ -238,7 +249,7 @@
 
 معیار پذیرش:
 
-- اصلاح mapping فقط draft را تغییر دهد، نه نسخه approved.
+- اصلاح mapping اجرای جدید برای همان SourceDocument بسازد؛ هیچ Import تاریخی یا approved تغییر نکند.
 - template هر Supplier فقط در سازمان خودش استفاده شود.
 - اگر mapping باعث ambiguity شود، سیستم approval را مسدود کند.
 - raw row برای audit حفظ شود.
@@ -773,8 +784,8 @@ Vision هزینه، خطا و ریسک امنیتی بیشتری دارد. با�
 
 ## قدم بعدی پیشنهادی
 
-قدم بعدی مهندسی، Sprint 1 است:
+قدم بعدی مهندسی پس از تکمیل Sprint 3، Sprint 4 است:
 
-> مدیریت تأمین‌کننده با tenant isolation کامل.
+> نسخه قیمت immutable و مقایسه با آخرین نسخه معتبر.
 
-دلیل انتخاب این قدم این است که تمام قابلیت‌های بعدی، یعنی import پایدار، versioning، approval، قیمت‌گذاری و پیش‌فاکتور، به Supplier معتبر و سازمان‌محور وابسته‌اند.
+Supplier، Import پایدار و اصلاح/Template نگاشت سازمانی وجود دارند؛ PriceListVersion و approval هنوز ساخته نشده‌اند.

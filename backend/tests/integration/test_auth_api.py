@@ -382,7 +382,15 @@ async def test_login_rate_limit_returns_retry_after() -> None:
 
 @pytest.mark.anyio
 async def test_production_registration_is_disabled_by_default() -> None:
-    app = create_app(Settings(app_env="production", web_origin="https://app.example.com"))
+    app = create_app(
+        Settings(
+            app_env="production",
+            web_origin="https://app.example.com",
+            s3_endpoint_url="https://objects.example.com",
+            s3_access_key="production-access",
+            s3_secret_key="production-secret",
+        )
+    )
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="https://test") as client:
         response = await client.post("/api/v1/auth/register", json=account_payload())
@@ -399,6 +407,9 @@ async def test_production_auth_cookies_are_secure() -> None:
             web_origin="https://app.example.com",
             database_url=TEST_DATABASE_URL,
             auth_public_registration_enabled=True,
+            s3_endpoint_url="https://objects.example.com",
+            s3_access_key="production-access",
+            s3_secret_key="production-secret",
         )
     )
     transport = ASGITransport(app=app)

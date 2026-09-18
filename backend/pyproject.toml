@@ -8,6 +8,7 @@ dependencies = [
   "alembic>=1.16.5,<2",
   "argon2-cffi>=25.1.0,<26",
   "asyncpg>=0.30.0,<1",
+  "boto3>=1.40.0,<2",
   "email-validator>=2.2.0,<3",
   "fastapi>=0.116.1,<1",
   "openpyxl>=3.1.5,<4",
@@ -69,5 +70,5 @@ plugins = ["pydantic.mypy"]
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["openpyxl.*"]
+module = ["boto3.*", "botocore.*", "openpyxl.*"]
 ignore_missing_imports = true

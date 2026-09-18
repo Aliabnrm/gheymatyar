@@ -54,4 +54,15 @@ describe("frontend source boundaries", () => {
     expect(supplierService).not.toMatch(/@\/features\//);
     expect(supplierService).not.toMatch(/@\/components\//);
   });
+
+  it("keeps price-list import transport in its service adapter", () => {
+    const importFeature = readTypeScriptTree("src/features/price-list-imports");
+    const importService = readTypeScriptTree("src/services/price-list-imports");
+
+    expect(importFeature).not.toMatch(/\bfetch\s*\(/);
+    expect(importFeature).not.toMatch(/\.register\s*\(/);
+    expect(importFeature).not.toMatch(/\borganizationId\b/);
+    expect(importService).not.toMatch(/@\/features\//);
+    expect(importService).not.toMatch(/@\/components\//);
+  });
 });

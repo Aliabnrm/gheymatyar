@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImportHistory } from "@/features/price-list-imports";
 import { useCurrentAccountQuery } from "@/services/auth";
 import {
   useSupplierQuery,
@@ -178,6 +179,7 @@ export function SupplierDetailsPage({ supplierId }: { supplierId: string }) {
           </CardContent>
         </Card>
       ) : null}
+      <ImportHistory supplierId={supplierId} supplierIsActive={data.isActive} />
     </main>
   );
 }

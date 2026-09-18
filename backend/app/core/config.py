@@ -3,7 +3,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,10 @@ class AppEnvironment(StrEnum):
     DEVELOPMENT = "development"
     TEST = "test"
     PRODUCTION = "production"
+
+
+_LOCAL_S3_ACCESS_KEY = "gheymatyar"
+_LOCAL_S3_SECRET_KEY = "local-development-only"
 
 
 class Settings(BaseSettings):
@@ -32,6 +36,13 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=5, ge=0, le=100)
     database_pool_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    s3_endpoint_url: str = "http://localhost:9000"
+    s3_bucket: str = "gheymatyar-source-documents"
+    s3_access_key: SecretStr = SecretStr(_LOCAL_S3_ACCESS_KEY)
+    s3_secret_key: SecretStr = SecretStr(_LOCAL_S3_SECRET_KEY)
+    s3_region: str = "us-east-1"
+    s3_connect_timeout_seconds: int = Field(default=3, ge=1, le=30)
+    s3_read_timeout_seconds: int = Field(default=10, ge=1, le=120)
     auth_public_registration_enabled: bool | None = None
     auth_cookie_secure: bool | None = None
     auth_session_ttl_seconds: int = Field(
@@ -79,6 +90,31 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL must use postgresql+asyncpg")
         return value
 
+    @field_validator("s3_endpoint_url")
+    @classmethod
+    def validate_s3_endpoint_url(cls, value: str) -> str:
+        endpoint = value.strip().rstrip("/")
+        parsed = urlsplit(endpoint)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or parsed.path not in {"", "/"}
+        ):
+            raise ValueError("S3_ENDPOINT_URL must be an HTTP(S) origin without credentials")
+        return endpoint
+
+    @field_validator("s3_bucket")
+    @classmethod
+    def validate_s3_bucket(cls, value: str) -> str:
+        bucket = value.strip()
+        if not 3 <= len(bucket) <= 63:
+            raise ValueError("S3_BUCKET must contain between 3 and 63 characters")
+        return bucket
+
     @model_validator(mode="after")
     def validate_production_auth_transport(self) -> "Settings":
         if self.app_env is AppEnvironment.PRODUCTION:
@@ -86,6 +122,13 @@ class Settings(BaseSettings):
                 raise ValueError("production WEB_ORIGIN must use HTTPS")
             if self.auth_cookie_secure is False:
                 raise ValueError("AUTH_COOKIE_SECURE cannot be false in production")
+            if not self.s3_endpoint_url.startswith("https://"):
+                raise ValueError("production S3_ENDPOINT_URL must use HTTPS")
+            if (
+                self.s3_access_key.get_secret_value() == _LOCAL_S3_ACCESS_KEY
+                or self.s3_secret_key.get_secret_value() == _LOCAL_S3_SECRET_KEY
+            ):
+                raise ValueError("production S3 credentials must be explicitly configured")
         return self
 
     @property

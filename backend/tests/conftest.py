@@ -1,5 +1,6 @@
 import os
 from collections.abc import AsyncIterator
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.config import Settings
 from app.main import create_app
+from app.modules.price_lists.infrastructure.s3_document_storage import S3DocumentStorage
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", Settings().database_url)
 
@@ -18,8 +20,40 @@ def anyio_backend() -> str:
 
 
 @pytest.fixture
-def api_app() -> FastAPI:
-    return create_app(Settings(app_env="test", database_url=TEST_DATABASE_URL))
+def document_storage() -> S3DocumentStorage:
+    class FakeS3Client:
+        def __init__(self) -> None:
+            self.objects: dict[str, bytes] = {}
+
+        def get_object(self, *, Bucket: str, Key: str):
+            return {"Body": BytesIO(self.objects[Key])}
+
+        def put_object(self, *, Bucket: str, Key: str, Body: bytes, ContentType: str) -> object:
+            del Bucket, ContentType
+            self.objects[Key] = Body
+            return {}
+
+        def delete_object(self, *, Bucket: str, Key: str) -> object:
+            del Bucket
+            self.objects.pop(Key, None)
+            return {}
+
+        def head_bucket(self, *, Bucket: str) -> object:
+            del Bucket
+            return {}
+
+        def close(self) -> None:
+            return None
+
+    return S3DocumentStorage(client=FakeS3Client(), bucket="test-source-documents")
+
+
+@pytest.fixture
+def api_app(document_storage: S3DocumentStorage) -> FastAPI:
+    return create_app(
+        Settings(app_env="test", database_url=TEST_DATABASE_URL),
+        document_storage=document_storage,
+    )
 
 
 @pytest.fixture

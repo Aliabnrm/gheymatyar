@@ -30,6 +30,11 @@ class SupplierRecord(Base):
             "normalized_name",
             name="uq_suppliers_organization_normalized_name",
         ),
+        UniqueConstraint(
+            "organization_id",
+            "id",
+            name="uq_suppliers_organization_id_id",
+        ),
         Index(
             "ix_suppliers_organization_active_name",
             "organization_id",

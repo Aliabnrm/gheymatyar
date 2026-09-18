@@ -83,6 +83,7 @@ describe("apiRequest", () => {
       code: "INVALID_PRICE",
       message: "قیمت نامعتبر است.",
       status: 422,
+      details: { row: 4 },
     });
   });
 

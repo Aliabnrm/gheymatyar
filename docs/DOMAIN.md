@@ -9,6 +9,32 @@
 چرخه استفاده خارج یا دوباره فعال می‌شود. نام رکورد غیرفعال برای حفظ هویت تاریخی
 همچنان رزرو می‌ماند.
 
+## SourceDocument و ImportRun
+
+`SourceDocument` فایل اصلی XLSX پذیرفته‌شده را به Organization، Supplier و کاربر
+بارگذارکننده متصل می‌کند. محتوای فایل در object storage خصوصی است و PostgreSQL فقط
+metadata شامل نام نمایش امن‌شده، media type، اندازه، SHA-256 و object key تولیدشده
+توسط سرور را نگه می‌دارد. ترکیب
+`organization_id + supplier_id + sha256_hex` یکتا است؛ بنابراین همان فایل برای همان
+تأمین‌کننده دوباره Import نمی‌شود، ولی در سازمان یا تأمین‌کننده دیگر مجاز است.
+
+هر upload پذیرفته‌شده یک `ImportRun` اولیه می‌سازد. وضعیت‌های این مرحله فقط:
+
+- `DRAFT`: حداقل یک ردیف به‌صورت کامل ذخیره شده و blocking error ندارد.
+- `FAILED`: هیچ ردیف استخراج‌شده‌ای ندارد و code، پیام فارسی و details امن خطای
+  مسدودکننده را نگه می‌دارد.
+
+ImportRun پس از ایجاد endpoint ویرایش یا حذف ندارد. اصلاح mapping یا اجرای دوباره
+در Sprint 3 run جدید می‌سازد. `DRAFT` هنوز `PriceListVersion` تأییدشده یا قیمت
+جاری نیست و هیچ approval خودکاری انجام نمی‌شود.
+
+## ExtractedRow
+
+ردیف canonical استخراج‌شده به Organization، Supplier و ImportRun متصل است. تمام
+ردیف‌های DRAFT در یک transaction ذخیره می‌شوند و partial persistence مجاز نیست.
+ترکیب `import_run_id + product_code_normalized` یکتا است. مقدار `raw_row` برای
+ممیزی حفظ می‌شود، اما پیش از JSONB شدن فقط به مقدارهای JSON-safe تبدیل می‌شود.
+
 ## PriceListItem
 
 ردیف استاندارد مستقل از قالب منبع:
@@ -23,6 +49,7 @@
 - pack_size
 - price_irr
 - availability
+- availability_raw
 - notes
 - raw_row
 
@@ -53,9 +80,9 @@
 
     supplier_id + normalized_product_code
 
-در مقایسه stateless فعلی، یک تأمین‌کننده فرض می‌شود و کلید همان normalized_product_code است.
-اتصال import و کد کالا به `supplier_id` در Sprint 2 انجام می‌شود؛ ایجاد Supplier
-در Sprint 1 رفتار endpoint مقایسه فعلی را تغییر نمی‌دهد.
+در Import پایدار، organization و supplier scope مستقیماً در داده و query اعمال
+می‌شود. مقایسه stateless فعلی همچنان یک تأمین‌کننده را فرض می‌کند و کلید آن فقط
+`normalized_product_code` است؛ endpoint مقایسه به persistence Import متصل نشده است.
 
 ## نرمال‌سازی متن فارسی
 
@@ -104,25 +131,68 @@
 
 محاسبه با Decimal انجام می‌شود و برای نمایش به دو رقم اعشار گرد می‌شود. old_price صفر در دامنه معتبر نیست.
 
-## خطاهای مسدودکننده
+## خطاهای مسدودکننده و سیاست نگهداری
+
+خطاهای ایمنی container یا محدودیت منابع قبل از ذخیره object رد می‌شوند و هیچ
+SourceDocument یا ImportRun نمی‌سازند:
 
 - INVALID_FILE_TYPE
 - FILE_TOO_LARGE
+- EMPTY_FILE
 - INVALID_XLSX_SIGNATURE
+- XLSX_ARCHIVE_LIMIT_EXCEEDED
+- ENCRYPTED_XLSX_NOT_SUPPORTED
 - WORKBOOK_UNREADABLE
+- WORKBOOK_SHEET_LIMIT_EXCEEDED
+- WORKBOOK_ROW_LIMIT_EXCEEDED
+- WORKBOOK_COLUMN_LIMIT_EXCEEDED
+
+خطاهای کیفیت داده زیر فایل اصلی را نگه می‌دارند و ImportRun با وضعیت `FAILED`
+می‌سازند، اما هیچ ExtractedRow جزئی ذخیره نمی‌شود:
+
 - HEADER_NOT_FOUND
 - REQUIRED_COLUMN_MISSING
 - EMPTY_PRODUCT_CODE
+- INVALID_PRODUCT_CODE
+- EMPTY_PRODUCT_NAME
 - DUPLICATE_PRODUCT_CODE
 - INVALID_PRICE
+- INVALID_PACK_SIZE
 - TOMAN_NOT_SUPPORTED
+- NO_PRODUCT_ROWS
 
-خطای مسدودکننده مانع تولید نتیجه قابل تأیید می‌شود.
+هر دو گروه مانع تولید Draft قابل تأیید می‌شوند؛ تفاوت آن‌ها در نگهداری یا رد کامل
+فایل است.
 
 ## نسخه‌بندی آینده
 
-- Draft قابل اصلاح است.
+- Import Draft این مرحله snapshot فقط‌خواندنی است؛ correction در Sprint 3 run تازه می‌سازد.
+- PriceListVersion Draft قابل اصلاح در مرحله versioning تعریف می‌شود.
 - Approved immutable است.
 - Approval شامل actor، timestamp و source document hash است.
 - اصلاح پس از approval یک version جدید می‌سازد.
 - قیمت قبلی update نمی‌شود.
+
+## نگاشت و الگوی تأمین‌کننده — Sprint 3
+
+طبق ADR 0008، CanonicalField هشت مقدار مشخص دارد و ColumnMapping، برگه، ردیف عنوان
+و ستون‌های یک‌مبنا را نگه می‌دارد. کد، نام و قیمت اجباری‌اند؛ برند، واحد، تعداد
+بسته، موجودی و توضیحات اختیاری‌اند. aliasهای قطعی فارسی/عربی و لاتین با normalization
+مشترک خوانده می‌شوند؛ دو کاندید یک فیلد یا چند header هم‌امتیاز استخراج را مسدود می‌کند.
+
+اصلاح با `parent_import_id` یک run تازه برای همان سند می‌سازد. Importهای تاریخی
+حتی اگر FAILED باشند update نمی‌شوند. snapshot نگاشت، پیشنهاد، نگاشت استفاده‌شده،
+شناسه Template و خطاهای محدود هر اجرا مستقل است. هیچ PriceListVersion جاری یا approved نداریم.
+
+Template نسخه‌دار و tenant/supplier-scoped است؛ فقط یک نسخه فعال دارد و ذخیره
+از DRAFT موفق با اقدام صریح کاربر انجام می‌شود. جایگزینی نیازمند تأیید و UUID
+نسخه فعال دیده‌شده است. actor، زمان و Import مرجع در هر نسخه حفظ می‌شود. تغییر
+عنوان، ترتیب ستون، برگه یا محل header به بازبینی و اجرای تازه نیاز دارد.
+
+raw_row علاوه بر عنوان‌ها، مقدار همه ستون‌ها را با کلید `column_N` حفظ می‌کند؛
+عنوان تکراری یا خالی داده ممیزی را حذف نمی‌کند. مقدارهای null و تاریخ نیز JSON-safe هستند.
+
+قیمت float حتی اگر بخش اعشار آن صفر باشد رد می‌شود؛ نمایش علمی/اعشاری و
+جداکننده هزارگان نامعتبر مانند `1,2`، `1,,000` و `1 2` هم خطاست. متن عدد صحیح
+یا گروه‌های سه‌رقمی با جداکننده یکسان پذیرفته می‌شود. حدود عددی persistence
+قبل از ذخیره کنترل می‌شوند: قیمت تا bigint مثبت و تعداد بسته تا integer مثبت.

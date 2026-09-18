@@ -16,6 +16,9 @@ describe("auth cache lifecycle", () => {
       secret: "comparison",
     });
     queryClient.setQueryData(["suppliers", "list"], { secret: "supplier" });
+    queryClient.setQueryData(["price-list-imports", "supplier", "id"], {
+      secret: "extracted-row",
+    });
     queryClient.getMutationCache().build(queryClient, {
       mutationKey: ["price-list-comparison"],
       mutationFn: async () => null,
@@ -28,6 +31,9 @@ describe("auth cache lifecycle", () => {
       queryClient.getQueryData(["price-list-comparison", "latest"]),
     ).toBeUndefined();
     expect(queryClient.getQueryData(["suppliers", "list"])).toBeUndefined();
+    expect(
+      queryClient.getQueryData(["price-list-imports", "supplier", "id"]),
+    ).toBeUndefined();
     expect(
       queryClient
         .getMutationCache()

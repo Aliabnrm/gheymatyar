@@ -24,10 +24,12 @@ frontend/
 │   │   │   ├── model/                # route و labelهای type-safe
 │   │   │   └── index.ts              # public API قابلیت
 │   │   ├── price-list-comparison/    # قابلیت مقایسه XLSX
+│   │   ├── price-list-imports/       # آپلود، تاریخچه و بازبینی Import Draft
 │   │   └── suppliers/                # list/create/detail/update تأمین‌کننده
 │   ├── services/
 │   │   ├── auth/                     # schema، API و TanStack hooks
 │   │   ├── price-list-comparison/
+│   │   ├── price-list-imports/       # schema، API و TanStack hooks مربوط به Import
 │   │   └── suppliers/
 │   ├── lib/                          # utility استاندارد shadcn مانند cn
 │   └── utils/                        # ابزارهای خالص برنامه
@@ -55,6 +57,8 @@ frontend/
 
 - shadcn یک dependency بسته نیست؛ primitiveهای انتخاب‌شده در `src/components/ui`
   بخشی از source پروژه‌اند و منطق Auth وارد آن‌ها نمی‌شود.
+- primitive جدول Import در `components/ui/table.tsx` نیز source-owned و هم‌راستا
+  با نسخه pinشده `shadcn@4.19.0` است و هیچ منطق قیمت یا Import ندارد.
 - Tailwind 4 tokenهای semantic مانند `primary`، `destructive`، `border` و `ring`
   را به palette موجود قیمت‌یار در `globals.css` متصل می‌کند. CSS قدیمی قابلیت
   مقایسه هم‌زمان و بدون بازنویسی باقی مانده است.
@@ -93,6 +97,13 @@ frontend/
 `ProtectedAppShell` مشترک استفاده می‌کنند. server state تأمین‌کننده با query-key
 factory و schemaهای Zod مدیریت و هنگام logout یا 401 پاک می‌شود. فرم نام فقط از
 React Hook Form، `Controller` و primitiveهای source-owned shadcn استفاده می‌کند.
+
+مسیرهای `/suppliers/[supplierId]/imports/new` و
+`/suppliers/[supplierId]/imports/[importId]` جریان آپلود و بازبینی Import را ارائه
+می‌کنند. `FormData` فقط در API adapter ساخته می‌شود، mutation بارگذاری CSRF
+می‌فرستد و GETهای تاریخچه، جزئیات و ردیف‌ها بدون CSRF اجرا می‌شوند. پاسخ‌های HTTP
+پیش از ورود به UI با Zod به مدل camelCase تبدیل می‌شوند. cache این قابلیت بر اساس
+Supplier و Import scope می‌شود و در logout، تغییر حساب و پاسخ 401 کامل پاک می‌شود.
 
 فرم‌ها RTL، دارای label واقعی، autocomplete، validation محلی، loading/disabled،
 `role=alert` و پیام‌های فارسی خطای credential، rate limit، registration disabled،
@@ -138,3 +149,10 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+بخش نگاشت Import از serviceهای `column-mapping.schema/api/hooks` در همان قابلیت
+استفاده می‌کند. validation نگاشت و eligibility ذخیره در مدل خالص و schema قرار
+دارند؛ component مسئول نمایش و تعامل است. فیلدهای فنی نگاشت با نام‌های canonical
+قرارداد HTTP نگه داشته می‌شوند. mutation اجرای جدید، cache تاریخچه، جزئیات، ردیف‌ها
+و نگاشت همان Supplier را invalidate می‌کند و نتیجه تازه را در cache قرار می‌دهد.
+ذخیره الگو عملیات جدا با تأیید جایگزینی است؛ همه خطاها، حالت خالی و loading فارسی‌اند.

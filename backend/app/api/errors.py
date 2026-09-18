@@ -10,6 +10,10 @@ from app.core.config import Settings
 from app.core.middleware import add_security_headers, get_request_id
 from app.modules.accounts.domain.errors import AccountError, AccountErrorCode
 from app.modules.price_lists.domain.errors import PriceListError, PriceListErrorCode
+from app.modules.price_lists.domain.import_errors import (
+    PriceListImportError,
+    PriceListImportErrorCode,
+)
 from app.modules.suppliers.domain.errors import SupplierError, SupplierErrorCode
 
 _logger = logging.getLogger(__name__)
@@ -87,6 +91,27 @@ async def handle_account_error(request: Request, exc: Exception) -> JSONResponse
         message=exc.message,
         details=exc.details,
         headers=headers,
+    )
+
+
+async def handle_price_list_import_error(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, PriceListImportError):
+        raise exc
+    status_codes = {
+        PriceListImportErrorCode.PRICE_LIST_IMPORT_NOT_FOUND: 404,
+        PriceListImportErrorCode.IMPORT_FILE_ALREADY_EXISTS: 409,
+        PriceListImportErrorCode.SUPPLIER_INACTIVE: 409,
+        PriceListImportErrorCode.MAPPING_TEMPLATE_CONFLICT: 409,
+        PriceListImportErrorCode.MAPPING_TEMPLATE_REQUIRES_DRAFT: 422,
+        PriceListImportErrorCode.SOURCE_DOCUMENT_CHANGED: 409,
+        PriceListImportErrorCode.OBJECT_STORAGE_UNAVAILABLE: 503,
+    }
+    return _error_response(
+        request,
+        status_code=status_codes[exc.code],
+        code=exc.code.value,
+        message=exc.message,
+        details=exc.details,
     )
 
 
@@ -169,6 +194,7 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(PriceListError, handle_price_list_error)
+    app.add_exception_handler(PriceListImportError, handle_price_list_import_error)
     app.add_exception_handler(AccountError, handle_account_error)
     app.add_exception_handler(SupplierError, handle_supplier_error)
     app.add_exception_handler(RequestValidationError, handle_request_validation_error)

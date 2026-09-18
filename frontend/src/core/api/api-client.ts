@@ -72,6 +72,7 @@ export async function apiRequest<TResponse>({
       throw new ApiRequestError(errorResult.data.error.message, {
         code: errorResult.data.error.code,
         status: response.status,
+        details: errorResult.data.error.details,
       });
     }
 

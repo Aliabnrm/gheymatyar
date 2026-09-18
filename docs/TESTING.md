@@ -21,10 +21,15 @@
 - fixed session expiry، role guard و CSRF binding
 - login limiter expiry، clear و bounded cleanup
 - normalization نام Supplier و update command
+- invariantهای DRAFT/FAILED، SHA-256، object key و JSON-safe raw row
+- دسته‌بندی خطای safety/data-quality و compensating delete
 
 ### Fixture regression
 
-دو فایل fixtures/excel باید همیشه summary ثبت‌شده در fixtures/expected را تولید کنند. این تست مهم‌ترین قرارداد فعلی است.
+دو فایل fixtures/excel باید همیشه summary ثبت‌شده در fixtures/expected را تولید
+کنند: ۲۴ ردیف قدیم، ۲۴ ردیف جدید، ۲ اضافه، ۲ حذف، ۱۸ تغییر قیمت، ۲ تغییر فقط
+metadata و ۲ بدون تغییر؛ تغییر pack-size کد `ACC-RJ45-CAT6-100` نیز باید باقی
+بماند. این تست مهم‌ترین قرارداد فعلی است.
 
 ### API integration
 
@@ -49,14 +54,28 @@
 - readiness موفق و شکست امن PostgreSQL
 - CRUD تأمین‌کننده، role matrix، CSRF و پاسخ‌های پایدار
 - tenant escape با UUID تأمین‌کننده سازمان دیگر
+- upload، history، detail و rows Import با role و CSRF صحیح
+- duplicate hash، Supplier غیرفعال و storage unavailable
+- DRAFT اتمیک و FAILED بدون ردیف جزئی
+- readiness موفق/ناموفق PostgreSQL و bucket خصوصی
 
 ### PostgreSQL integration
 
 تست persistence فقط روی PostgreSQL اجرا می‌شود و SQLite جایگزین آن نیست. پیش از
 pytest، migration با `alembic upgrade head` اجرا می‌شود. تست‌ها constraintهای
 unique، FK، role CHECK و timestamp timezone-aware را روی schema واقعی بررسی
-می‌کنند. CI یک PostgreSQL 17 service سالم دارد، migration را اجرا و سپس test suite
-را آغاز می‌کند.
+می‌کنند. migration Import همچنین composite tenant FK، status consistency، قیمت،
+pack size، شماره ردیف و uniqueness کد محصول/hash فایل را کنترل می‌کند. CI سرویس‌های
+سالم PostgreSQL 17 و MinIO با bucket تست خصوصی دارد، migration را اجرا و سپس test
+suite و storage integration را آغاز می‌کند. تست storage اجرا‌نشده موفق محسوب نمی‌شود.
+
+### Object Storage integration
+
+- object واقعی با key تولیدشده سرور و محتوای برابر فایل اصلی ذخیره می‌شود.
+- filename خام وارد key نمی‌شود و bucket عمومی نیست.
+- شکست storage پاسخ امن 503 می‌دهد و رکورد موفق نمی‌سازد.
+- شکست دیتابیس یا duplicate race، object همان request را با compensating delete پاک می‌کند.
+- تست‌ها objectهای ساخته‌شده خود را پاک می‌کنند.
 
 ### File security
 
@@ -64,6 +83,9 @@ unique، FK، role CHECK و timestamp timezone-aware را روی schema واقع
 - سقف مجموع حجم بازشده archive
 - ردکردن صریح فایل عبورکرده از محدودیت
 - پاک‌سازی filename traversal
+- فایل empty/unreadable/encrypted و ZIP bomb
+- بستن UploadFile در مسیر موفق و خطا
+- عدم ذخیره فایل safety-invalid
 
 ### Frontend
 
@@ -81,16 +103,19 @@ unique، FK، role CHECK و timestamp timezone-aware را روی schema واقع
 - policy عدم استفاده از localStorage/sessionStorage برای auth
 - schema/API/query cache و فرم React Hook Form تأمین‌کننده
 - loading، empty، read-only و mutation stateهای Supplier
+- Zod/API/query-key و cache lifecycle برای Importهای هر Supplier
+- فرم upload با React Hook Form Controller و FormData در service boundary
+- history و detail در حالت DRAFT/FAILED و pagination ردیف‌ها
+- duplicate، inactive، forbidden، not-found، network/server/storage error
 
 ### End-to-End
 
 پس از پایدارشدن محیط:
 
-1. بازکردن داشبورد
-2. انتخاب V1 و V2
-3. اجرای مقایسه
-4. کنترل summary
-5. کنترل تغییر pack size
+1. ورود، انتخاب Supplier فعال و بارگذاری XLSX
+2. کنترل history، وضعیت DRAFT و ردیف‌های persistشده پس از refresh
+3. کنترل نمایش FAILED بدون ردیف جزئی برای فایل دارای خطای کیفیت داده
+4. اجرای compare stateless با V1/V2 و کنترل summary و تغییر pack size
 
 ## Quality gates
 
@@ -123,13 +148,55 @@ Frontend:
 - هر bug استخراج مهم یک regression fixture کوچک می‌گیرد.
 - fixture بزرگ فقط وقتی نگه داشته می‌شود که حالت واقعی را پوشش دهد.
 
-## تست‌های امنیتی الزامی آینده
+## تست‌های امنیتی
 
-- tenant escape
+- tenant escape Import و rows با UUID سازمان/Supplier دیگر
 - formula injection در export
 - timeout OCR/Vision
 - prompt injection در سند
 
-tenant escape برای Supplier با list/get/update سازمان دیگر پوشش داده شده است.
+tenant escape برای Supplier و Import با list/get/update/rows سازمان دیگر پوشش داده شده است.
 session با organization یا membership نامعتبر و membership مبهم نیز در تست‌های
 foundation باقی مانده است.
+
+## بررسی Sprint 3 — 2026-09-06
+
+تست‌های افزوده:
+
+- `test_column_mapping.py`: alias فارسی/عربی/لاتین، ترتیب ستون، header غیر اول،
+  نگاشت ناقص/تکراری/خارج محدوده، header و ستون مبهم، صفر ابتدایی، خطای ردیفی محدود،
+  نگهداری ستون‌های هم‌عنوان، تومان، float و جداکننده مبهم، ماکرو با نام جعلی، XML خراب،
+  مهلت پردازش و dimension جعلی که ستون قیمت دوم را پنهان می‌کند.
+- `test_mapping_api.py`: correction، استفاده و جایگزینی Template، race ایجاد و
+  جایگزینی، OWNER/OPERATOR و CSRF، tenant/Supplier isolation، Supplier غیرفعال،
+  حفظ تاریخچه، کنترل SHA-256 و rollback واقعی پس از flush اجرای جدید.
+- تست constraintهای FK ترکیبی parent روی همان SourceDocument و Template روی همان Supplier.
+- تست schema/API/hooks فرانت‌اند برای preview bounded، canonical fields، CSRF،
+  انتقال request و invalidation تاریخچه، جزئیات، ردیف‌ها و نگاشت با حفظ scope Supplier.
+- تست component برای loading، empty، success، validation/server error، جلوگیری
+  از انتخاب ناقص/تکراری، تأیید جایگزینی، Supplier غیرفعال و escaping متن Excel.
+
+بررسی واقعی مرورگر با حساب و داده ساختگی محلی انجام شد: فایل با عنوان‌های سفارشی
+ابتدا FAILED شد؛ ردیف دوم و سه ستون دستی انتخاب شدند؛ اجرای جدید DRAFT با
+کد `001-A` و شماره ردیف ۳ نمایش داده شد؛ ذخیره Template موفق بود و جایگزینی تا
+تأیید checkbox مسدود ماند. چیدمان فارسی RTL و جدول preview نیز بصری بررسی شد.
+
+migration در دو دیتابیس موقت مستقل بررسی شد: upgrade از صفر به head و upgrade
+از 0007 دارای SourceDocument/ImportRun تاریخی به 0008. snapshot همه ستون‌های
+قدیمی پیش/پس از migration برابر بود و ستون‌های جدید null ماندند. هر دو
+`alembic check` پاس شدند و دیتابیس‌های موقت پاک شدند. migration روی دیتابیس توسعه
+نیز بدون تغییر داده تاریخی اعمال شده است.
+
+فرمان تست کامل با storage واقعی:
+
+    RUN_OBJECT_STORAGE_INTEGRATION=1 make test
+
+MinIO محلی و bucket خصوصی پیش از اجرا آماده شدند. fixtureهای baseline و JSON
+انتظار بدون تغییر باقی مانده‌اند. شمارش مرجع ۲۴/۲۴، ۲ اضافه، ۲ حذف، ۱۸ تغییر قیمت،
+۲ تغییر صرفاً metadata، ۲ بدون تغییر و تغییر بسته `ACC-RJ45-CAT6-100` پاس می‌شود.
+
+`make lint` (Ruff، mypy، ESLint، TypeScript و Prettier)، بررسی Ruff format،
+`pnpm --dir frontend build` و `alembic check` نیز اجرا شده‌اند.
+
+نتیجه نهایی این اجرا: **۱۴۴ تست بک‌اند و ۹۶ تست فرانت‌اند موفق، بدون skip**.
+گزارش فایل‌ها و تصمیم‌ها در [SPRINT3_REPORT_FA.md](SPRINT3_REPORT_FA.md) است.

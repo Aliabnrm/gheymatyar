@@ -1,15 +1,18 @@
-import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from io import BytesIO
+from time import monotonic
 from typing import Literal, Protocol, runtime_checkable
+from xml.etree.ElementTree import ParseError
 from zipfile import BadZipFile, ZipFile
 
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.workbook.workbook import Workbook
 
+from ..application.mapping_dto import ExtractionReport
 from ..domain.errors import PriceListError, PriceListErrorCode
+from ..domain.mapping import ColumnMapping, detect_columns, normalize_header
 from ..domain.models import PriceListItem
 from ..domain.normalization import (
     map_availability,
@@ -19,9 +22,6 @@ from ..domain.normalization import (
     parse_pack_size,
     parse_price_irr,
 )
-
-_HEADER_CLEANER = re.compile(r"[\s()\[\]{}_\-/:]+")
-_REQUIRED_COLUMNS = {"product_code", "product_name", "price_irr"}
 
 
 @runtime_checkable
@@ -34,6 +34,8 @@ class _ReadOnlySheet(Protocol):
     @property
     def max_column(self) -> int | None: ...
 
+    def reset_dimensions(self) -> None: ...
+
     def iter_rows(
         self,
         min_row: int | None = None,
@@ -45,44 +47,9 @@ class _ReadOnlySheet(Protocol):
     ) -> Iterable[tuple[object, ...]]: ...
 
 
-_HEADER_ALIASES_RAW: dict[str, tuple[str, ...]] = {
-    "row_number": ("ردیف", "شماره"),
-    "product_code": ("کد کالا", "کد محصول", "شناسه کالا", "sku", "item code"),
-    "product_name": ("شرح کالا", "نام کالا", "شرح محصول", "نام محصول", "product"),
-    "brand": ("برند", "brand"),
-    "unit": ("واحد فروش", "واحد", "unit"),
-    "pack_size": (
-        "تعداد در بسته",
-        "تعداد بسته",
-        "تعداد در کارتن",
-        "بسته بندی",
-        "pack size",
-    ),
-    "price_irr": (
-        "قیمت همکار ریال",
-        "قیمت همکار (ریال)",
-        "قیمت ریال",
-        "قیمت خرید ریال",
-        "قیمت",
-        "price irr",
-    ),
-    "availability": ("وضعیت موجودی", "موجودی", "availability", "stock"),
-    "notes": ("توضیحات", "توضیح", "یادداشت", "notes"),
-}
-
-
-def _normalize_header(value: object) -> str:
-    return _HEADER_CLEANER.sub("", normalize_persian_text(value).casefold())
-
-
-_HEADER_ALIASES = {
-    canonical: {_normalize_header(alias) for alias in aliases}
-    for canonical, aliases in _HEADER_ALIASES_RAW.items()
-}
-
-
 @dataclass(frozen=True, slots=True)
 class XlsxExtractionLimits:
+    max_processing_seconds: float = 15.0
     max_header_scan_rows: int = 20
     max_rows: int = 50_000
     max_columns: int = 200
@@ -100,7 +67,11 @@ class XlsxExtractionLimits:
             self.max_archive_entries,
             self.max_uncompressed_bytes,
         )
-        if any(value < 1 for value in values) or self.max_compression_ratio < 1:
+        if (
+            any(value < 1 for value in values)
+            or self.max_compression_ratio < 1
+            or self.max_processing_seconds <= 0
+        ):
             raise ValueError("XLSX extraction limits must be positive")
 
 
@@ -109,6 +80,22 @@ class XlsxPriceListExtractor:
         self._limits = limits or XlsxExtractionLimits()
 
     def extract(self, content: bytes, *, filename: str) -> list[PriceListItem]:
+        report = self.analyze(content, filename=filename)
+        if report.error:
+            raise report.error
+        return report.items
+
+    def analyze(
+        self,
+        content: bytes,
+        *,
+        filename: str,
+        mapping: ColumnMapping | None = None,
+        header_signature: tuple[str, ...] | None = None,
+        sheet_name: str | None = None,
+        header_row: int | None = None,
+    ) -> ExtractionReport:
+        deadline = monotonic() + self._limits.max_processing_seconds
         if not content.startswith(b"PK\x03\x04"):
             raise PriceListError(
                 PriceListErrorCode.INVALID_XLSX_SIGNATURE,
@@ -125,7 +112,7 @@ class XlsxPriceListExtractor:
                 data_only=True,
                 keep_links=False,
             )
-        except (BadZipFile, InvalidFileException, OSError, ValueError) as exc:
+        except (BadZipFile, InvalidFileException, OSError, ValueError, KeyError, ParseError) as exc:
             raise PriceListError(
                 PriceListErrorCode.WORKBOOK_UNREADABLE,
                 "فایل Excel قابل خواندن نیست یا آسیب دیده است.",
@@ -134,13 +121,22 @@ class XlsxPriceListExtractor:
 
         try:
             self._validate_workbook_dimensions(workbook)
-            sheet, header_row_number, columns, header_values = self._find_header(workbook)
-            return self._extract_rows(
-                sheet=sheet,
-                header_row_number=header_row_number,
-                columns=columns,
-                header_values=header_values,
+            # XLSX dimension metadata is untrusted: it must not hide rows or columns.
+            for sheet in self._read_only_worksheets(workbook):
+                sheet.reset_dimensions()
+            return self._analyze_workbook(
+                workbook,
+                mapping=mapping,
+                header_signature=header_signature,
+                sheet_name=sheet_name,
+                header_row=header_row,
+                deadline=deadline,
             )
+        except (BadZipFile, OSError, ValueError, KeyError, ParseError) as exc:
+            raise PriceListError(
+                PriceListErrorCode.WORKBOOK_UNREADABLE,
+                "فایل Excel قابل خواندن نیست یا آسیب دیده است.",
+            ) from exc
         finally:
             workbook.close()
 
@@ -179,6 +175,24 @@ class XlsxPriceListExtractor:
             if compression_ratio > self._limits.max_compression_ratio:
                 raise self._archive_limit_error(filename)
 
+        try:
+            with ZipFile(BytesIO(content)) as archive:
+                content_types = archive.read("[Content_Types].xml")
+                if (
+                    b"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"
+                    not in content_types
+                    or b"macroEnabled" in content_types
+                    or any("vbaproject" in e.filename.casefold() for e in entries)
+                ):
+                    raise PriceListError(
+                        PriceListErrorCode.INVALID_FILE_TYPE,
+                        "فقط محتوای واقعی XLSX بدون ماکرو پذیرفته می‌شود.",
+                    )
+        except (KeyError, BadZipFile) as exc:
+            raise PriceListError(
+                PriceListErrorCode.WORKBOOK_UNREADABLE, "ساختار فایل Excel معتبر نیست."
+            ) from exc
+
     def _archive_limit_error(self, filename: str) -> PriceListError:
         return PriceListError(
             PriceListErrorCode.XLSX_ARCHIVE_LIMIT_EXCEEDED,
@@ -210,58 +224,162 @@ class XlsxPriceListExtractor:
                     {"sheet": sheet.title, "max_columns": self._limits.max_columns},
                 )
 
-    def _find_header(
+    def _analyze_workbook(
         self,
         workbook: Workbook,
-    ) -> tuple[_ReadOnlySheet, int, dict[str, int], tuple[object, ...]]:
-        best: tuple[_ReadOnlySheet, int, dict[str, int], tuple[object, ...]] | None = None
-
-        for sheet in self._read_only_worksheets(workbook):
-            scan_limit = min(
-                sheet.max_row or self._limits.max_header_scan_rows,
-                self._limits.max_header_scan_rows,
-            )
-            for row_number, row in enumerate(
-                sheet.iter_rows(min_row=1, max_row=scan_limit, values_only=True),
-                start=1,
+        *,
+        mapping: ColumnMapping | None,
+        header_signature: tuple[str, ...] | None,
+        sheet_name: str | None,
+        header_row: int | None,
+        deadline: float,
+    ) -> ExtractionReport:
+        sheets = self._read_only_worksheets(workbook)
+        candidates: list[tuple[int, _ReadOnlySheet, int, tuple[object, ...]]] = []
+        for sheet in sheets:
+            for number, row in enumerate(
+                sheet.iter_rows(
+                    min_row=1,
+                    max_row=min(
+                        sheet.max_row or self._limits.max_header_scan_rows,
+                        self._limits.max_header_scan_rows,
+                    ),
+                    values_only=True,
+                ),
+                1,
             ):
-                if any("تومان" in normalize_persian_text(value) for value in row if value):
+                self._check_resources(row, deadline)
+                columns, ambiguous = detect_columns(row)
+                candidates.append((len(columns) + len(ambiguous), sheet, number, row))
+        candidates.sort(key=lambda candidate: -candidate[0])
+        if not candidates:
+            raise PriceListError(PriceListErrorCode.HEADER_NOT_FOUND, "سطر عنوان جدول پیدا نشد.")
+        _, selected, number, headers = candidates[0]
+        explicit = mapping is not None or header_row is not None or sheet_name is not None
+        if mapping:
+            sheet_name, header_row = mapping.sheet_name, mapping.header_row
+        layout_missing = False
+        if explicit:
+            selected_sheet = next(
+                (sheet for sheet in sheets if sheet.title == (sheet_name or selected.title)), None
+            )
+            if selected_sheet is None or not 1 <= (header_row or number) <= (
+                selected_sheet.max_row or self._limits.max_rows
+            ):
+                if header_signature is None:
+                    raise PriceListError(
+                        PriceListErrorCode.INVALID_COLUMN_MAPPING,
+                        "برگه یا ردیف عنوان در فایل وجود ندارد.",
+                    )
+                layout_missing = True
+            else:
+                selected, number = selected_sheet, header_row or number
+                headers = next(
+                    iter(selected.iter_rows(min_row=number, max_row=number, values_only=True)), ()
+                )
+        proposed, ambiguous = detect_columns(headers)
+        detected = ColumnMapping(selected.title, number, proposed)
+        used = mapping or detected
+        self._check_resources(headers, deadline)
+        preview_rows = list(
+            selected.iter_rows(
+                min_row=number + 1,
+                max_row=min(number + 5, selected.max_row or number + 5),
+                values_only=True,
+            )
+        )
+        for row in preview_rows:
+            self._check_resources(row, deadline)
+        width = max([len(headers), *(len(row) for row in preview_rows)])
+        headers = (*headers, *((None,) * (width - len(headers))))
+        snapshot: dict[str, object] = {
+            "sheets": [sheet.title for sheet in sheets],
+            "detected_mapping": detected.as_dict(),
+            "used_mapping": None,
+            "origin": "manual" if mapping else "detected",
+            "template_id": None,
+            "columns": [
+                {"index": index, "label": str(value or "")[:200]}
+                for index, value in enumerate(headers, 1)
+            ],
+            "header_signature": [normalize_header(value) for value in headers],
+            "ambiguous_fields": {
+                field.value: list(positions) for field, positions in ambiguous.items()
+            },
+            "preview": [
+                {
+                    "source_row_number": row_number,
+                    "values": [str(value)[:200] if value is not None else "" for value in row],
+                }
+                for row_number, row in enumerate(
+                    preview_rows,
+                    number + 1,
+                )
+                if row_number <= (selected.max_row or number + 5)
+            ],
+            "issues": [],
+            "total_errors": 0,
+            "errors_truncated": False,
+        }
+        try:
+            for n, row in enumerate(
+                selected.iter_rows(min_row=1, max_row=number, values_only=True), 1
+            ):
+                self._check_resources(row, deadline)
+                if any("تومان" in normalize_persian_text(value) for value in row):
                     raise PriceListError(
                         PriceListErrorCode.TOMAN_NOT_SUPPORTED,
-                        "این فایل برچسب تومان دارد؛ ورودی MVP باید ریال باشد.",
-                        {"sheet": sheet.title, "row": row_number},
+                        "این فایل برچسب تومان دارد؛ مبلغ باید ریال باشد.",
+                        {"row": n, "field": "price_irr"},
                     )
-                mapping = self._map_columns(row)
-                candidate = (sheet, row_number, mapping, tuple(row))
-                if best is None or len(mapping) > len(best[2]):
-                    best = candidate
-                if _REQUIRED_COLUMNS.issubset(mapping):
-                    return candidate
-
-        if best is None:
-            raise PriceListError(
-                PriceListErrorCode.HEADER_NOT_FOUND,
-                "سطر عنوان جدول در فایل پیدا نشد.",
+            if header_signature is not None and (
+                layout_missing or tuple(normalize_header(v) for v in headers) != header_signature
+            ):
+                raise PriceListError(
+                    PriceListErrorCode.TEMPLATE_LAYOUT_MISMATCH,
+                    "قالب فایل با الگوی ذخیره‌شده یکسان نیست؛ نگاشت را بازبینی و اصلاح کنید.",
+                )
+            if (
+                not explicit
+                and candidates[0][0] > 0
+                and sum(c[0] == candidates[0][0] for c in candidates) > 1
+            ):
+                raise PriceListError(
+                    PriceListErrorCode.AMBIGUOUS_HEADER,
+                    "چند ردیف یا برگه کاندید عنوان هستند؛ برگه و ردیف عنوان را انتخاب کنید.",
+                )
+            if mapping is None and ambiguous:
+                raise PriceListError(
+                    PriceListErrorCode.AMBIGUOUS_COLUMN_MAPPING,
+                    "برای یک فیلد چند ستون پیدا شد؛ ستون درست را انتخاب کنید.",
+                )
+            used.validate(column_count=len(headers))
+            snapshot["used_mapping"] = used.as_dict()
+            items = self._extract_rows(
+                sheet=selected,
+                header_row_number=number,
+                columns={field.value: index - 1 for field, index in used.columns.items()},
+                header_values=headers,
+                deadline=deadline,
             )
-
-        missing = sorted(_REQUIRED_COLUMNS.difference(best[2]))
-        raise PriceListError(
-            PriceListErrorCode.REQUIRED_COLUMN_MISSING,
-            "ستون‌های اجباری کد کالا، شرح کالا و قیمت ریالی پیدا نشدند.",
-            {"missing_columns": missing},
-        )
-
-    def _map_columns(self, row: Sequence[object]) -> dict[str, int]:
-        mapping: dict[str, int] = {}
-        for index, value in enumerate(row):
-            normalized = _normalize_header(value)
-            if not normalized:
-                continue
-            for canonical, aliases in _HEADER_ALIASES.items():
-                if canonical not in mapping and normalized in aliases:
-                    mapping[canonical] = index
-                    break
-        return mapping
+            return ExtractionReport(items, snapshot, None)
+        except PriceListError as error:
+            if error.code.value.startswith("WORKBOOK_"):
+                raise
+            snapshot["issues"] = error.details.get(
+                "issues",
+                [
+                    {
+                        "code": error.code.value,
+                        "message": error.message,
+                        "row": error.details.get("row"),
+                        "field": error.details.get("field"),
+                    }
+                ],
+            )
+            snapshot["total_errors"] = error.details.get("total_errors", 1)
+            snapshot["errors_truncated"] = error.details.get("errors_truncated", False)
+            return ExtractionReport([], snapshot, error)
 
     def _extract_rows(
         self,
@@ -270,9 +388,12 @@ class XlsxPriceListExtractor:
         header_row_number: int,
         columns: dict[str, int],
         header_values: tuple[object, ...],
+        deadline: float,
     ) -> list[PriceListItem]:
         items: list[PriceListItem] = []
         seen_codes: set[str] = set()
+        issues: list[dict[str, object]] = []
+        total_errors = 0
 
         if sheet.max_row is not None and sheet.max_row - header_row_number > self._limits.max_rows:
             raise PriceListError(
@@ -286,6 +407,7 @@ class XlsxPriceListExtractor:
             values_only=True,
         )
         for source_row_number, row in enumerate(rows, start=header_row_number + 1):
+            self._check_resources(row, deadline)
             if source_row_number - header_row_number > self._limits.max_rows:
                 raise PriceListError(
                     PriceListErrorCode.WORKBOOK_ROW_LIMIT_EXCEEDED,
@@ -313,19 +435,24 @@ class XlsxPriceListExtractor:
                 price_irr = parse_price_irr(raw_price)
                 pack_size = parse_pack_size(self._optional_cell(row, columns, "pack_size"))
             except PriceListError as exc:
-                exc.with_details(sheet=sheet.title, row=source_row_number)
-                raise
+                total_errors += 1
+                if len(issues) < 100:
+                    issues.append(self._row_issue(exc, source_row_number))
+                continue
 
             if product_code in seen_codes:
-                raise PriceListError(
-                    PriceListErrorCode.DUPLICATE_PRODUCT_CODE,
-                    f"کد کالا در فایل تکرار شده است: {product_code}",
-                    {
-                        "sheet": sheet.title,
-                        "row": source_row_number,
-                        "product_code": product_code,
-                    },
-                )
+                total_errors += 1
+                if len(issues) < 100:
+                    issues.append(
+                        self._row_issue(
+                            PriceListError(
+                                PriceListErrorCode.DUPLICATE_PRODUCT_CODE,
+                                "کد کالا در فایل تکرار شده است.",
+                            ),
+                            source_row_number,
+                        )
+                    )
+                continue
             seen_codes.add(product_code)
 
             availability_value = self._optional_cell(row, columns, "availability")
@@ -346,12 +473,56 @@ class XlsxPriceListExtractor:
             )
             items.append(item)
 
+        if issues:
+            first = issues[0]
+            raise PriceListError(
+                PriceListErrorCode(str(first["code"])),
+                str(first["message"]),
+                {
+                    "sheet": sheet.title,
+                    "row": first["row"],
+                    "field": first["field"],
+                    "issues": issues,
+                    "total_errors": total_errors,
+                    "errors_truncated": total_errors > len(issues),
+                },
+            )
         if not items:
             raise PriceListError(
                 PriceListErrorCode.NO_PRODUCT_ROWS,
                 "هیچ ردیف کالای معتبری در فایل پیدا نشد.",
             )
         return items
+
+    def _check_resources(self, row: Sequence[object], deadline: float) -> None:
+        if monotonic() > deadline:
+            raise PriceListError(
+                PriceListErrorCode.WORKBOOK_PROCESSING_TIMEOUT,
+                "زمان پردازش فایل از حد مجاز گذشت؛ فایل کوچک‌تری انتخاب کنید.",
+            )
+        if len(row) > self._limits.max_columns:
+            raise PriceListError(
+                PriceListErrorCode.WORKBOOK_COLUMN_LIMIT_EXCEEDED,
+                "تعداد ستون‌های فایل از محدودیت مجاز بیشتر است.",
+            )
+
+    @staticmethod
+    def _row_issue(error: PriceListError, row: int) -> dict[str, object]:
+        fields = {
+            PriceListErrorCode.EMPTY_PRODUCT_CODE: "product_code",
+            PriceListErrorCode.INVALID_PRODUCT_CODE: "product_code",
+            PriceListErrorCode.DUPLICATE_PRODUCT_CODE: "product_code",
+            PriceListErrorCode.EMPTY_PRODUCT_NAME: "product_name",
+            PriceListErrorCode.INVALID_PRICE: "price_irr",
+            PriceListErrorCode.TOMAN_NOT_SUPPORTED: "price_irr",
+            PriceListErrorCode.INVALID_PACK_SIZE: "pack_size",
+        }
+        return {
+            "row": row,
+            "field": fields.get(error.code),
+            "code": error.code.value,
+            "message": error.message,
+        }
 
     @staticmethod
     def _cell(row: Sequence[object], index: int) -> object:
@@ -389,12 +560,11 @@ class XlsxPriceListExtractor:
 
     @staticmethod
     def _raw_row(headers: tuple[object, ...], row: Sequence[object]) -> dict[str, object]:
-        raw: dict[str, object] = {}
+        raw: dict[str, object] = {f"column_{index + 1}": value for index, value in enumerate(row)}
         for index, value in enumerate(row):
-            if value is None:
-                continue
             header = normalize_persian_text(headers[index]) if index < len(headers) else ""
-            raw[header or f"column_{index + 1}"] = value
+            if header and header not in raw:
+                raw[header] = value
         return raw
 
     @staticmethod

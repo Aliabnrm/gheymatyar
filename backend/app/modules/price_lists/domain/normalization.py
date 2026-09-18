@@ -12,6 +12,7 @@ _DIGIT_TRANSLATION = str.maketrans(
 _CHAR_TRANSLATION = str.maketrans({"ي": "ی", "ك": "ک", "\u200c": "", "\u200f": ""})
 _WHITESPACE = re.compile(r"\s+")
 _INTEGER_TEXT = re.compile(r"^\+?\d+$")
+MAX_PRODUCT_CODE_LENGTH = 255
 
 
 def normalize_persian_text(value: object) -> str:
@@ -27,6 +28,11 @@ def normalize_product_code(value: object) -> str:
     normalized = _WHITESPACE.sub("", normalized)
     if not normalized:
         raise PriceListError(PriceListErrorCode.EMPTY_PRODUCT_CODE, "کد کالا خالی است.")
+    if len(normalized) > MAX_PRODUCT_CODE_LENGTH:
+        raise PriceListError(
+            PriceListErrorCode.INVALID_PRODUCT_CODE,
+            "کد کالا نباید بیشتر از ۲۵۵ نویسه باشد.",
+        )
     return normalized
 
 
@@ -75,9 +81,7 @@ def parse_positive_integer(
     if isinstance(value, int):
         parsed = value
     elif isinstance(value, float):
-        if not math.isfinite(value) or not value.is_integer():
-            raise PriceListError(code, message)
-        parsed = int(value)
+        raise PriceListError(code, message)
     else:
         text = normalize_persian_text(value)
         if "تومان" in text:
@@ -85,14 +89,17 @@ def parse_positive_integer(
                 PriceListErrorCode.TOMAN_NOT_SUPPORTED,
                 "واحد تومان در این نسخه پشتیبانی نمی‌شود؛ مبلغ باید ریال باشد.",
             )
-        text = text.replace("ریال", "")
-        text = text.replace(",", "").replace("٬", "").replace("،", "")
-        text = _WHITESPACE.sub("", text)
+        text = text.removesuffix("ریال").strip()
+        if not _INTEGER_TEXT.fullmatch(text):
+            if not re.fullmatch(r"\+?\d{1,3}([,٬، ])\d{3}(?:\1\d{3})*", text):
+                raise PriceListError(code, message)
+            text = re.sub(r"[,٬، ]", "", text)
         if not _INTEGER_TEXT.fullmatch(text):
             raise PriceListError(code, message)
         parsed = int(text)
 
-    if parsed <= 0:
+    maximum = 2**31 - 1 if code is PriceListErrorCode.INVALID_PACK_SIZE else 2**63 - 1
+    if parsed <= 0 or parsed > maximum:
         raise PriceListError(code, message)
     return parsed
 

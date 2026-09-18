@@ -8,6 +8,8 @@ from alembic import context
 from app.core.config import Settings
 from app.infrastructure.database.base import Base
 from app.modules.accounts.infrastructure import orm as accounts_orm  # noqa: F401
+from app.modules.price_lists.infrastructure import import_orm as price_list_import_orm  # noqa: F401
+from app.modules.price_lists.infrastructure import mapping_orm  # noqa: F401
 from app.modules.suppliers.infrastructure import orm as suppliers_orm  # noqa: F401
 
 config = context.config

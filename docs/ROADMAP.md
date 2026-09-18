@@ -25,7 +25,8 @@
 
 ## مرحله ۲ — Persistence، هویت و Import پایدار
 
-وضعیت: زیرمرحله foundation انجام‌شده؛ persistence داده‌های قیمت هنوز شروع نشده است.
+وضعیت: foundation، Supplier و Import Draft پایدار انجام‌شده‌اند؛ versioning و
+approval هنوز شروع نشده‌اند.
 
 ترتیب اجرایی این مرحله عمداً چنین است:
 
@@ -33,18 +34,19 @@
 2. Auth امن با session سمت سرور — انجام‌شده
 3. Organization Membership و نقش‌های OWNER/OPERATOR — انجام‌شده
 4. Supplier — انجام‌شده
-5. PriceListVersion و نگهداری فایل اصلی — شروع‌نشده
-6. import state machine و template نگاشت ستون — شروع‌نشده
-7. Draft، Approval و Audit Log — شروع‌نشده
+5. SourceDocument، ImportRun، ExtractedRows و نگهداری فایل اصلی — انجام‌شده
+6. template و اصلاح نگاشت ستون — شروع‌نشده
+7. PriceListVersion و مقایسه با آخرین نسخه approved — شروع‌نشده
+8. Draft نسخه، Approval و Audit Log — شروع‌نشده
 
-مقایسه XLSX فعلی فقط پس از احراز هویت قابل استفاده است، اما فایل و نتیجه مقایسه
-هنوز ذخیره نمی‌شوند. Supplier، فایل و approval پیش از تکمیل زیرمرحله مربوطه به
-این foundation اضافه نمی‌شوند.
+مقایسه XLSX فعلی فقط پس از احراز هویت قابل استفاده و همچنان stateless است. مسیر
+مستقل Import فایل اصلی، metadata و ردیف‌های canonical را نگه می‌دارد، اما هیچ
+Importی هنوز PriceListVersion جاری یا approved ایجاد نمی‌کند.
 
 ## مرحله ۳ — پردازش background
 
 - Redis و Celery
-- idempotency
+- idempotency اجرایی job و retry توزیع‌شده
 - retry و timeout
 - progress
 - observability

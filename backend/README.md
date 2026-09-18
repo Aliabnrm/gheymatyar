@@ -1,10 +1,10 @@
 # بک‌اند قیمت‌یار
 
-این سرویس FastAPI حساب و نشست سازمانی را در PostgreSQL نگهداری می‌کند و برای کاربر
-احراز هویت‌شده دو فایل XLSX را اعتبارسنجی، استخراج و مقایسه می‌کند. فایل و نتیجه
-مقایسه هنوز persist نمی‌شوند. تأمین‌کنندگان سازمانی در PostgreSQL نگهداری می‌شوند.
-Redis، object storage و worker جزو runtime این برش
-نیستند.
+این سرویس FastAPI حساب، نشست سازمانی، تأمین‌کننده و Importهای فایل قیمت را در
+PostgreSQL نگهداری می‌کند. فایل اصلی هر Import در Object Storage سازگار با S3
+(در توسعه محلی MinIO) نگهداری و ردیف‌های canonical آن به‌صورت atomic ذخیره
+می‌شوند. endpoint مقایسه مستقیم دو فایل همچنان stateless است. Redis و worker
+جزو runtime این برش نیستند.
 
 ## ساختار
 
@@ -27,10 +27,10 @@ Redis، object storage و worker جزو runtime این برش
     │   ├── domain/              # role، context و خطاهای مستقل
     │   └── infrastructure/      # SQLAlchemy، Argon2id و token امن
     ├── modules/price_lists/
-    │   ├── presentation/       # multipart، schema، DI و threadpool boundary
-    │   ├── application/        # use case مقایسه و extractor port
-    │   ├── domain/             # مدل، invariant، normalization و diff
-    │   └── infrastructure/     # پیاده‌سازی امن openpyxl
+    │   ├── presentation/       # multipart، قرارداد Import و threadpool boundary
+    │   ├── application/        # compare/import use case و portهای DB/storage
+    │   ├── domain/             # مدل، وضعیت DRAFT/FAILED، normalization و diff
+    │   └── infrastructure/     # openpyxl، SQLAlchemy و S3 adapter
     └── modules/suppliers/      # CRUD سازمانی، normalization و soft deactivation
 
 قانون وابستگی:
@@ -42,9 +42,9 @@ domain هیچ وابستگی‌ای به FastAPI، Pydantic، openpyxl یا زی
 
 ## اجرا
 
-PostgreSQL را بالا بیاورید و migration را جداگانه اجرا کنید:
+PostgreSQL و MinIO را بالا بیاورید و migration را جداگانه اجرا کنید:
 
-    docker compose up -d postgres
+    docker compose up -d postgres minio minio-init
     cp .env.example .env
     cd backend
     uv sync --dev
@@ -62,7 +62,10 @@ PostgreSQL را بالا بیاورید و migration را جداگانه اجر�
 
 Backend روی host از `DATABASE_URL` با hostname `localhost` در `.env.example`
 استفاده می‌کند. Compose همان variable را با hostname `postgres` override می‌کند.
-برنامه migration را در startup اجرا نمی‌کند.
+برای MinIO نیز اجرای host از `S3_ENDPOINT_URL=http://localhost:9000` و اجرای
+Compose از hostname `minio` استفاده می‌کند. bucket خصوصی باید پیش از startup با
+init service ساخته شود. برنامه migration یا ساخت bucket را در startup اجرا
+نمی‌کند.
 
 ## Auth و onboarding
 
@@ -98,3 +101,27 @@ routeهای `GET/POST /api/v1/suppliers` و
 `GET/PATCH /api/v1/suppliers/{supplier_id}` با organization جاری محدود می‌شوند.
 OWNER مجاز به write و OPERATOR مجاز به read است. POST/PATCH به CSRF نیاز دارند و
 حذف فیزیکی Supplier وجود ندارد.
+
+## Import فایل قیمت
+
+مسیرهای زیر برای OWNER و OPERATOR فعال‌اند:
+
+    POST /api/v1/suppliers/{supplier_id}/imports
+    GET  /api/v1/suppliers/{supplier_id}/imports
+    GET  /api/v1/suppliers/{supplier_id}/imports/{import_id}
+    GET  /api/v1/suppliers/{supplier_id}/imports/{import_id}/rows
+
+POST به Cookie session و `X-CSRF-Token` نیاز دارد. فایل safety-invalid ذخیره
+نمی‌شود؛ خطای کیفیت داده یک Import با وضعیت `FAILED` و بدون ردیف جزئی می‌سازد.
+فایل معتبر با وضعیت `DRAFT` و ردیف‌های استخراج‌شده ذخیره می‌شود. فایل تکراری
+برای همان سازمان و تأمین‌کننده با SHA-256 شناسایی می‌شود. Approval، download و background processing وجود ندارند؛ mapping در Sprint 3 اضافه شده است.
+
+Readiness هم PostgreSQL و هم دسترسی bucket را بررسی می‌کند؛ liveness مستقل از
+هر دو dependency باقی می‌ماند.
+
+## نگاشت Sprint 3
+
+migration `20260906_0008` نگاشت snapshot، parent اجرای اصلاحی و Templateهای
+سازمانی را اضافه می‌کند. APIهای `/imports/{id}/mapping`، `/imports/{id}/rerun`
+و `/mapping-template` زیر Supplier قرار دارند. ذخیره Template فقط از DRAFT موفق
+ممکن است؛ اجرای مجدد فایل خصوصی را با hash کنترل و run تازه می‌سازد.

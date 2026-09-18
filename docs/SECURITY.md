@@ -32,7 +32,9 @@
 - نام object تصادفی؛ نام کاربر فقط metadata
 - hash فایل برای idempotency و ممیزی
 
-محافظت اولیه archive bomb پیاده‌سازی شده است. timeout سخت پردازش، memory limit سطح process، اسکن بدافزار و ذخیره امن فایل اصلی مربوط به مرحله import پایدار هستند.
+محافظت archive و ذخیره امن فایل اصلی در object storage خصوصی پیاده‌سازی شده است.
+timeout سخت پردازش، memory limit سطح process و اسکن بدافزار همچنان پیش از پایلوت
+عمومی لازم‌اند؛ پردازش Import در این مرحله synchronous است.
 
 ## کنترل‌های HTTP فعلی
 
@@ -58,6 +60,9 @@
 - تمام متدهای Supplier repository، `organization_id` جاری را اجباری دریافت و
   شرط آن را داخل SQL اعمال می‌کنند. شناسه tenant دیگر مانند شناسه ناموجود پاسخ
   داده می‌شود.
+- SourceDocument، ImportRun و ExtractedRow علاوه بر Supplier با `organization_id`
+  جاری داخل SQL محدود می‌شوند. mismatch سازمان/Supplier با composite foreign key
+  در PostgreSQL نیز رد می‌شود.
 
 ## Authentication و نقش‌ها
 
@@ -70,6 +75,13 @@ XLSX را مقایسه کنند. approval و مدیریت عضو هنوز پیا
 در Supplier، هر دو نقش list/detail را می‌خوانند اما فقط OWNER مجاز به create،
 rename و تغییر وضعیت است. POST/PATCH علاوه بر role guard به CSRF معتبر نیاز دارند.
 غیرفعال‌سازی جایگزین حذف سخت است تا هویت و ارجاع تاریخی آینده حفظ شود.
+
+کنترل دسترسی Import:
+
+OWNER و OPERATOR می‌توانند فایل یک Supplier فعال را بارگذاری و history، detail و
+rows را بخوانند. upload به CSRF معتبر نیاز دارد؛ GETها نیاز ندارند. Importهای قبلی
+Supplier غیرفعال قابل مشاهده‌اند، اما upload جدید با conflict رد می‌شود. approval،
+download و حذف Import در این مرحله وجود ندارد.
 
 کنترل‌های Auth پیاده‌سازی‌شده:
 
@@ -89,8 +101,9 @@ rename و تغییر وضعیت است. POST/PATCH علاوه بر role guard ب
 - register در production به‌صورت پیش‌فرض خاموش است. onboarding مالک با command
   `gheymatyar-create-owner`، password بدون echo و همان use case ثبت‌نام انجام می‌شود.
 
-برای درخواست‌های unsafe مبتنی بر Session، SameSite به‌تنهایی کافی نیست. logout و
-compare باید Cookie CSRF، header `X-CSRF-Token` و hash همان Session را با مقایسه
+برای درخواست‌های unsafe مبتنی بر Session، SameSite به‌تنهایی کافی نیست. logout،
+compare، mutation تأمین‌کننده و upload Import باید Cookie CSRF، header
+`X-CSRF-Token` و hash همان Session را با مقایسه
 constant-time معتبر کنند. نبودن یا mismatch بدون نمایش token با 403 رد می‌شود.
 
 استقرار production باید frontend و API را روی HTTPS و site سازگار با
@@ -117,6 +130,21 @@ login limiter فعلی برای پایلوت تک‌پردازه طراحی شد
 - فایل .env فقط محلی و ignore است.
 - production از secret manager استفاده می‌کند.
 - کلیدها قابل rotation هستند.
+- endpoint تولید S3 باید HTTPS باشد، credential از secret manager تأمین شود و
+  مقدار پیش‌فرض development در production پذیرفته نشود.
+
+## نگهداری فایل و سازگاری داده
+
+- bucket فایل اصلی private است و endpoint دانلود یا URL عمومی ندارد.
+- object key فقط از UUIDهای server-generated ساخته می‌شود و filename خام کاربر در
+  مسیر object قرار نمی‌گیرد.
+- SHA-256 فایل با scope سازمان و Supplier برای idempotency استفاده می‌شود؛ hash یا
+  object key مدرک authorization نیست.
+- خطای safety/container هیچ object یا رکوردی نگه نمی‌دارد. خطای کیفیت داده فایل
+  اصلی و ImportRun ناموفق را نگه می‌دارد، اما ردیف جزئی ایجاد نمی‌کند.
+- PostgreSQL و S3 transaction مشترک ندارند. شکست دیتابیس پس از upload با
+  compensating delete جبران می‌شود، ولی در failureهای نادر cleanup خطر object
+  orphan باقی می‌ماند و باید عملیاتی پایش و پاک‌سازی شود.
 
 ## Logging
 
@@ -133,6 +161,7 @@ login limiter فعلی برای پایلوت تک‌پردازه طراحی شد
 
 - کل محتوای فایل
 - dump ردیف‌های قیمت
+- object key، hash کامل فایل و نام فایل غیرضروری
 - token، password و API key
 - داده شخصی مشتری
 
@@ -163,3 +192,25 @@ login limiter فعلی برای پایلوت تک‌پردازه طراحی شد
 - ساخت OWNER اولیه با password اختصاصی و ثبت‌نام عمومی خاموش
 - `AUTH_COOKIE_SECURE=true` و HTTPS/site سازگار
 - rate limit توزیع‌شده یا reverse-proxy پیش از scale افقی
+- bucket خصوصی و از پیش provisionشده، readiness storage و rotation credential
+- timeout/memory limit و سیاست اسکن بدافزار پیش از دریافت فایل عمومی
+
+## کنترل‌های نگاشت Sprint 3
+
+- بازبینی، اجرای مجدد و Template با سازمان نشست و Supplier در SQL محدود می‌شوند.
+- حتی UUID معتبر از tenant یا Supplier دیگر مجوز خواندن، correction یا ذخیره الگو نیست.
+- تمام POSTهای جدید role guard و CSRF دارند؛ غیرفعال‌شدن Supplier زیر قفل DB دوباره بررسی می‌شود.
+- Template به جای overwrite نسخه تازه می‌سازد؛ CAS با شناسه نسخه فعال و تأیید صریح مانع race است.
+- پیش از اجرای مجدد، اندازه و SHA-256 فایل خصوصی بررسی می‌شود و body خوانده‌شده سقف upload دارد.
+- preview فقط پنج ردیف و ۲۰۰ نویسه در هر سلول دارد؛ عنوان و مقدار با escaping React نمایش داده می‌شوند.
+- فایل macro-enabled حتی با تغییر نام به XLSX رد می‌شود؛ read-only/data-only باقی است.
+- انتخاب header/ستون دستی، کنترل برچسب تومان در preamble را دور نمی‌زند.
+- مهلت ۱۵ثانیه‌ای در مرز ردیف‌ها و بررسی header اعمال می‌شود. توقف سخت وسط parsing کتابخانه
+  و محدودیت حافظه سطح process همچنان موضوع hardening پیش از بار عمومی است.
+- timeout، archive نامعتبر و تجاوز منابع هیچ سند پایداری نمی‌سازند.
+- خطاهای ردیفی محدود و بدون مقدار سلول‌اند؛ فایل، قیمت‌های حجیم و امضای کامل عنوان‌ها log نمی‌شوند.
+
+dimension اعلامی worksheet مبنای کوتاه‌کردن extraction نیست؛ بعد از کنترل سقف
+اعلامی، reader ابعاد را از داده واقعی می‌خواند و سقف عرض/ردیف را حین پیمایش اعمال
+می‌کند. بنابراین dimension کوچک جعلی نمی‌تواند ستون قیمت دوم یا ردیف‌های بعدی را
+پنهان و فایل مبهم را به DRAFT موفق تبدیل کند. XML خراب نیز خطای پایدار فایل می‌دهد.

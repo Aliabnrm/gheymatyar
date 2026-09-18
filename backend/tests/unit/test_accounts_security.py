@@ -95,7 +95,13 @@ def test_login_rate_limiter_keeps_memory_bounded() -> None:
 
 
 def test_auth_defaults_are_environment_aware() -> None:
-    production = Settings(app_env="production", web_origin="https://app.example.com")
+    production = Settings(
+        app_env="production",
+        web_origin="https://app.example.com",
+        s3_endpoint_url="https://objects.example.com",
+        s3_access_key="production-access",
+        s3_secret_key="production-secret",
+    )
     development = Settings(app_env="development")
 
     assert production.registration_enabled is False

@@ -20,6 +20,28 @@ from app.modules.accounts.application.validate_csrf import ValidateCsrf
 from app.modules.accounts.infrastructure.passwords import Argon2PasswordHasher
 from app.modules.accounts.infrastructure.repositories import SqlAlchemyAccountStore
 from app.modules.accounts.infrastructure.tokens import SecureTokenService
+from app.modules.price_lists.application.create_import import CreatePriceListImport
+from app.modules.price_lists.application.get_import import GetPriceListImport
+from app.modules.price_lists.application.import_ports import DocumentStorageRuntime
+from app.modules.price_lists.application.import_services import PriceListImportServices
+from app.modules.price_lists.application.list_extracted_rows import ListExtractedRows
+from app.modules.price_lists.application.list_imports import ListPriceListImports
+from app.modules.price_lists.application.mapping_services import MappingServices
+from app.modules.price_lists.infrastructure.import_repositories import (
+    SqlAlchemyPriceListImportStore,
+)
+from app.modules.price_lists.infrastructure.mapping_repositories import SqlAlchemyMappingStore
+from app.modules.price_lists.infrastructure.s3_document_storage import (
+    create_s3_document_storage,
+)
+from app.modules.price_lists.infrastructure.threaded_extractor import ThreadedPriceListExtractor
+from app.modules.price_lists.infrastructure.threaded_mapping_extractor import (
+    ThreadedMappingExtractor,
+)
+from app.modules.price_lists.infrastructure.xlsx_extractor import (
+    XlsxExtractionLimits,
+    XlsxPriceListExtractor,
+)
 from app.modules.suppliers.application.create_supplier import CreateSupplier
 from app.modules.suppliers.application.get_supplier import GetSupplier
 from app.modules.suppliers.application.list_suppliers import ListSuppliers
@@ -28,7 +50,11 @@ from app.modules.suppliers.application.update_supplier import UpdateSupplier
 from app.modules.suppliers.infrastructure.repositories import SqlAlchemySupplierStore
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    document_storage: DocumentStorageRuntime | None = None,
+) -> FastAPI:
     resolved_settings = settings or get_settings()
     configure_logging(resolved_settings.log_level)
     database = create_database_runtime(resolved_settings)
@@ -36,12 +62,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     password_hasher = Argon2PasswordHasher()
     token_service = SecureTokenService()
     supplier_store = SqlAlchemySupplierStore(database.session_factory)
+    import_store = SqlAlchemyPriceListImportStore(database.session_factory)
+    storage = document_storage or create_s3_document_storage(resolved_settings)
+    xlsx_extractor = XlsxPriceListExtractor(
+        XlsxExtractionLimits(
+            max_header_scan_rows=resolved_settings.max_workbook_header_scan_rows,
+            max_rows=resolved_settings.max_workbook_rows,
+            max_columns=resolved_settings.max_workbook_columns,
+            max_sheets=resolved_settings.max_workbook_sheets,
+            max_archive_entries=resolved_settings.max_xlsx_archive_entries,
+            max_uncompressed_bytes=resolved_settings.max_xlsx_uncompressed_bytes,
+            max_compression_ratio=resolved_settings.max_xlsx_compression_ratio,
+        )
+    )
+    extractor = ThreadedPriceListExtractor(xlsx_extractor)
+    mapping_extractor = ThreadedMappingExtractor(xlsx_extractor)
+    mapping_store = SqlAlchemyMappingStore(database.session_factory)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
+            await storage.close()
             await database.dispose()
 
     application = FastAPI(
@@ -52,6 +95,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.state.settings = resolved_settings
     application.state.database = database
+    application.state.document_storage = storage
     application.state.account_services = AccountServices(
         register=RegisterAccount(
             store=store,
@@ -80,6 +124,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         list=ListSuppliers(supplier_store),
         get=GetSupplier(supplier_store),
         update=UpdateSupplier(supplier_store),
+    )
+    application.state.mapping_services = MappingServices(
+        imports=import_store,
+        store=mapping_store,
+        storage=storage,
+        extractor=mapping_extractor,
+        max_bytes=resolved_settings.max_upload_bytes,
+    )
+    application.state.price_list_import_services = PriceListImportServices(
+        create=CreatePriceListImport(
+            store=import_store,
+            storage=storage,
+            extractor=extractor,
+            mapping_extractor=mapping_extractor,
+            mapping_store=mapping_store,
+        ),
+        list=ListPriceListImports(import_store),
+        get=GetPriceListImport(import_store),
+        list_rows=ListExtractedRows(import_store),
     )
     application.add_middleware(
         CORSMiddleware,
