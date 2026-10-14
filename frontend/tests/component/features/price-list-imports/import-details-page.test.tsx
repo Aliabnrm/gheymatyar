@@ -17,6 +17,10 @@ vi.mock(
   () => ({ ColumnMappingPanel: () => <section aria-label="نگاشت ستون‌ها" /> }),
 );
 
+vi.mock("@/features/price-list-versions", () => ({
+  ImportChangeReview: () => <section aria-label="مقایسه نسخه قیمت" />,
+}));
+
 const mocks = vi.hoisted(() => ({
   detail: {} as Record<string, unknown>,
   rows: {} as Record<string, unknown>,

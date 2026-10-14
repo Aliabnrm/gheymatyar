@@ -25,11 +25,13 @@ frontend/
 │   │   │   └── index.ts              # public API قابلیت
 │   │   ├── price-list-comparison/    # قابلیت مقایسه XLSX
 │   │   ├── price-list-imports/       # آپلود، تاریخچه و بازبینی Import Draft
+│   │   ├── price-list-versions/      # مقایسه Import، ثبت و تاریخچه نسخه‌ها
 │   │   └── suppliers/                # list/create/detail/update تأمین‌کننده
 │   ├── services/
 │   │   ├── auth/                     # schema، API و TanStack hooks
 │   │   ├── price-list-comparison/
 │   │   ├── price-list-imports/       # schema، API و TanStack hooks مربوط به Import
+│   │   ├── price-list-versions/      # schema، API و query/mutationهای نسخه
 │   │   └── suppliers/
 │   ├── lib/                          # utility استاندارد shadcn مانند cn
 │   └── utils/                        # ابزارهای خالص برنامه
@@ -156,3 +158,25 @@ pnpm build
 قرارداد HTTP نگه داشته می‌شوند. mutation اجرای جدید، cache تاریخچه، جزئیات، ردیف‌ها
 و نگاشت همان Supplier را invalidate می‌کند و نتیجه تازه را در cache قرار می‌دهد.
 ذخیره الگو عملیات جدا با تأیید جایگزینی است؛ همه خطاها، حالت خالی و loading فارسی‌اند.
+
+## جریان نسخه‌های قیمت
+
+service مستقل `price-list-versions` تمام پاسخ‌های Version و change report را با
+Zod اعتبارسنجی و به مدل camelCase تبدیل می‌کند. query keyها Supplier-scoped هستند؛
+GETها AbortSignal دارند و mutation ساخت نسخه retry خودکار ندارد. پس از موفقیت فقط
+history، جزئیات Import و comparison همان Supplier تازه می‌شوند. conflict مبنا نیز
+comparison همان Import را refresh می‌کند.
+
+در صفحه Import، حالت اولین نسخه، summary، فیلتر، pagination، خطا و Supplier
+غیرفعال نمایش داده می‌شود. اگر همان Import قبلاً Version ساخته باشد، پنل ساخت با
+لینک نسخه موجود جایگزین می‌شود و گزارش همچنان مبنای تاریخی آن نسخه را نشان می‌دهد.
+صفحه مستقل Version، metadata، تغییرات و کالاهای صفحه‌بندی‌شده را ارائه می‌کند.
+
+## Review و قیمت جاری
+
+service نسخه‌ها قراردادهای Review، Approval، Reject، Current و Audit را با Zod
+اعتبارسنجی می‌کند. mutationها CSRF دارند، retry خودکار و optimistic update ندارند و
+پس از success یا conflict، detail، history، current، audit و Supplier مربوط را تازه
+می‌کنند. صفحه Version badge وضعیت، metadata تصمیم، پنل OWNER و timeline ممیزی دارد؛
+OPERATOR حالت فقط‌خواندنی می‌بیند. صفحه Supplier نیز loading، empty، error و نسخه
+جاری را در یک کارت ساده نمایش می‌دهد.

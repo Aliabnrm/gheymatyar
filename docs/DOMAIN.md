@@ -164,14 +164,19 @@ SourceDocument یا ImportRun نمی‌سازند:
 هر دو گروه مانع تولید Draft قابل تأیید می‌شوند؛ تفاوت آن‌ها در نگهداری یا رد کامل
 فایل است.
 
-## نسخه‌بندی آینده
+## نسخه ثبت‌شده قیمت — Sprint 4
 
-- Import Draft این مرحله snapshot فقط‌خواندنی است؛ correction در Sprint 3 run تازه می‌سازد.
-- PriceListVersion Draft قابل اصلاح در مرحله versioning تعریف می‌شود.
-- Approved immutable است.
-- Approval شامل actor، timestamp و source document hash است.
-- اصلاح پس از approval یک version جدید می‌سازد.
-- قیمت قبلی update نمی‌شود.
+- Import Draft خروجی معتبر extraction است و correction فقط ImportRun تازه می‌سازد.
+- `PriceListVersion` یک snapshot ثبت‌شده و تغییرناپذیر از ردیف‌های canonical یک Import است.
+- هر Import حداکثر یک Version دارد؛ Version اول predecessor ندارد و هر Version بعدی
+  دقیقاً به Version قبلی همان Organization و Supplier متصل است.
+- شماره نسخه در scope Supplier یکتا و افزایشی است. matching همچنان بر اساس Supplier
+  و کد کالای normalized انجام می‌شود و صفر ابتدایی کد حفظ می‌شود.
+- ساخت Version همه Itemها را در یک transaction درج می‌کند و هیچ Import، ExtractedRow
+  یا Version تاریخی را update نمی‌کند.
+- baseline گزارش Import نسخه‌نشده، آخرین Version ثبت‌شده است. پس از ساخت، گزارش
+  همان Import به predecessor ثبت‌شده آن Version متصل می‌ماند تا تاریخچه عوض نشود.
+- Version ثبت‌شده خودکار approved یا current نیست و با Review مستقل آغاز می‌شود.
 
 ## نگاشت و الگوی تأمین‌کننده — Sprint 3
 
@@ -182,7 +187,19 @@ SourceDocument یا ImportRun نمی‌سازند:
 
 اصلاح با `parent_import_id` یک run تازه برای همان سند می‌سازد. Importهای تاریخی
 حتی اگر FAILED باشند update نمی‌شوند. snapshot نگاشت، پیشنهاد، نگاشت استفاده‌شده،
-شناسه Template و خطاهای محدود هر اجرا مستقل است. هیچ PriceListVersion جاری یا approved نداریم.
+شناسه Template و خطاهای محدود هر اجرا مستقل است و هیچ Importی خودکار Version جاری
+یا approved نمی‌سازد.
+
+## Review، Approval و قیمت جاری — Sprint 5
+
+- هر Version دقیقاً یک Review با وضعیت `READY_FOR_REVIEW`، `APPROVED` یا `REJECTED` دارد.
+- فقط `READY_FOR_REVIEW` قابل انتقال است؛ Approved و Rejected terminal هستند.
+- `CURRENT` وضعیت Review نیست؛ pointer مستقل Supplier به یک Version approved است.
+- فقط آخرین Version ثبت‌شده Supplier قابل تأیید است.
+- Approval pointer را اتمیک جابه‌جا می‌کند؛ Approved قبلی تاریخی باقی می‌ماند.
+- Reject pointer را تغییر نمی‌دهد و دلیل ۱ تا ۵۰۰ نویسه می‌خواهد.
+- Version و Itemهای تاریخی در هیچ transition تغییر نمی‌کنند.
+- هر تصمیم actor، زمان، note و Audit Event append-only دارد.
 
 Template نسخه‌دار و tenant/supplier-scoped است؛ فقط یک نسخه فعال دارد و ذخیره
 از DRAFT موفق با اقدام صریح کاربر انجام می‌شود. جایگزینی نیازمند تأیید و UUID

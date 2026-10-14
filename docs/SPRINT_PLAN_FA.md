@@ -261,21 +261,24 @@ compare موجود همچنان stateless و مستقل باقی می‌ماند
 - قابل توضیح‌کردن خطا برای کاربر فارسی
 - طراحی UI برای stateهای خطا، empty و success
 
-## Sprint 4 — نسخه قیمت immutable و مقایسه با آخرین نسخه معتبر
+## Sprint 4 — نسخه قیمت immutable و مقایسه با آخرین نسخه ثبت‌شده
+
+وضعیت: انجام‌شده در 2026-09-18.
 
 هدف:
-ساخت PriceListVersion تا سیستم بداند نسخه معتبر فعلی هر Supplier چیست و import جدید را با آن مقایسه کند.
+ساخت PriceListVersion تا سیستم یک baseline ثبت‌شده و ممیزی‌پذیر برای هر Supplier
+داشته باشد و Import جدید را با آن مقایسه کند؛ بدون ادعای Approval یا قیمت جاری.
 
 مشکل کاربر که حل می‌شود:
-کاربر به‌جای مقایسه دستی فایل قدیم و جدید، فقط فایل جدید را آپلود می‌کند و سیستم با آخرین نسخه تأییدشده مقایسه می‌کند.
+کاربر به‌جای مقایسه دستی فایل قدیم و جدید، فقط فایل جدید را باز می‌کند و سیستم با آخرین نسخه ثبت‌شده مقایسه می‌کند.
 
 چرا بعد از کیفیت داده:
 نسخه معتبر نباید از داده مبهم یا ناقص ساخته شود. اول draft و validation، بعد versioning.
 
 خروجی محصول:
 
-- نمایش آخرین نسخه معتبر قیمت برای هر Supplier
-- compare import جدید با latest approved version
+- نمایش آخرین نسخه ثبت‌شده قیمت برای هر Supplier
+- compare Import جدید با latest registered version
 - نمایش تغییرات added، removed، price، unit، pack size و metadata
 - امکان مشاهده تاریخچه نسخه‌ها
 
@@ -289,7 +292,7 @@ compare موجود همچنان stateless و مستقل باقی می‌ماند
 
 معیار پذیرش:
 
-- نسخه approved قابل update مستقیم نباشد.
+- نسخه ثبت‌شده endpoint update/delete نداشته و قابل overwrite نباشد.
 - تغییر pack size و unit جدا و پرخطر نمایش داده شود.
 - قیمت‌ها فقط integer IRR باشند.
 - import یک سازمان با version سازمان دیگر مقایسه نشود.
@@ -302,7 +305,12 @@ compare موجود همچنان stateless و مستقل باقی می‌ماند
 - طراحی endpointهای versioned
 - performance query برای لیست‌های بزرگ
 
+مرز معنایی: Version ثبت‌شده، Import Draft و Approved Version سه مفهوم جدا هستند.
+Sprint 4 فقط دو مورد اول را دارد و ADR 0009 این مرز را ثبت می‌کند.
+
 ## Sprint 5 — Approval Workflow و Audit Log
+
+وضعیت: انجام‌شده در 2026-09-21.
 
 هدف:
 اضافه‌کردن تأیید انسانی رسمی پیش از اینکه یک فایل قیمت مبنای فروش شود.
@@ -315,7 +323,7 @@ Approval باید روی draft/version مشخص اعمال شود و اثر آن
 
 خروجی محصول:
 
-- وضعیت‌های draft، ready_for_review، approved، rejected
+- وضعیت‌های ready_for_review، approved و rejected برای Review مستقل Version
 - صفحه review قبل از approval
 - دکمه approve/reject با پیام هشدار
 - نمایش اینکه چه کسی و چه زمانی نسخه را تأیید کرده است
@@ -323,7 +331,7 @@ Approval باید روی draft/version مشخص اعمال شود و اثر آن
 خروجی فنی:
 
 - جدول `audit_logs`
-- state machine ساده برای import/version
+- state machine ساده Review، current pointer مستقل و Audit append-only
 - role guard برای approval
 - جلوگیری از approval خودکار
 - تست race condition حداقلی برای approval هم‌زمان
@@ -784,8 +792,9 @@ Vision هزینه، خطا و ریسک امنیتی بیشتری دارد. با�
 
 ## قدم بعدی پیشنهادی
 
-قدم بعدی مهندسی پس از تکمیل Sprint 3، Sprint 4 است:
+قدم بعدی مهندسی پس از تکمیل Sprint 5، Sprint 6 است:
 
-> نسخه قیمت immutable و مقایسه با آخرین نسخه معتبر.
+> داشبورد جست‌وجوی عملیاتی روی قیمت‌های جاری تأییدشده.
 
-Supplier، Import پایدار و اصلاح/Template نگاشت سازمانی وجود دارند؛ PriceListVersion و approval هنوز ساخته نشده‌اند.
+Supplier، Import پایدار، اصلاح/Template نگاشت، PriceListVersion تغییرناپذیر، Approval،
+Reject، Audit Log و current pointer وجود دارند؛ جست‌وجوی عملیاتی کالا مرز بعدی است.

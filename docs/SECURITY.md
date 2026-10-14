@@ -68,7 +68,8 @@ timeout سخت پردازش، memory limit سطح process و اسکن بدافز
 
 نقش‌های MVP فقط `OWNER` و `OPERATOR` هستند. این محدودیت در enum دامنه، schema
 API، CHECK constraint دیتابیس و role guard اعمال می‌شود. هر دو نقش می‌توانند فایل
-XLSX را مقایسه کنند. approval و مدیریت عضو هنوز پیاده‌سازی نشده‌اند.
+XLSX را مقایسه کنند. Approval فقط برای OWNER پیاده‌سازی شده و مدیریت عضو هنوز خارج
+از این برش است.
 
 کنترل دسترسی Supplier:
 
@@ -214,3 +215,31 @@ dimension اعلامی worksheet مبنای کوتاه‌کردن extraction ن�
 اعلامی، reader ابعاد را از داده واقعی می‌خواند و سقف عرض/ردیف را حین پیمایش اعمال
 می‌کند. بنابراین dimension کوچک جعلی نمی‌تواند ستون قیمت دوم یا ردیف‌های بعدی را
 پنهان و فایل مبهم را به DRAFT موفق تبدیل کند. XML خراب نیز خطای پایدار فایل می‌دهد.
+
+## کنترل‌های Version در Sprint 4
+
+- تمام lookupهای Version و Item با Organization و Supplier نشست scope می‌شوند؛ UUID
+  tenant یا Supplier دیگر همان پاسخ not-found را دارد.
+- POST ساخت Version role guard OWNER/OPERATOR و CSRF دارد. فعال‌بودن Supplier داخل
+  transaction و زیر lock دوباره بررسی می‌شود.
+- `expected_previous_version_id`، lock Supplier و unique constraintهای دیتابیس مانع
+  دو شاخه‌شدن lineage و replay تکراری یک Import می‌شوند.
+- Version و تمام Itemها در یک transaction ساخته می‌شوند؛ failure میانی snapshot
+  ناقص باقی نمی‌گذارد و هیچ FK مخرب با cascade به تاریخچه وجود ندارد.
+- response ردیف Version، `raw_row` کامل Import، object key و محتوای فایل را منتشر
+  نمی‌کند. گزارش‌های کامل، قیمت‌های حجیم و متن SQL log نمی‌شوند.
+- هیچ endpoint ویرایش، حذف یا دانلود عمومی Version وجود ندارد. داده spreadsheet
+  همچنان untrusted است و React آن را به‌صورت متن escape می‌کند.
+
+## کنترل‌های Approval در Sprint 5
+
+- Backend فقط OWNER دارای Session و CSRF معتبر را برای approve/reject می‌پذیرد؛
+  پنهان‌کردن کنترل در Frontend مجوز محسوب نمی‌شود.
+- Organization از Session گرفته و همه lookupها با Organization، Supplier و Version
+  scope می‌شوند؛ cross-tenant همان 404 امن را می‌گیرد.
+- Approval زیر lock دیتابیس latest بودن Version، فعال‌بودن Supplier، DRAFT بودن Import
+  و `expected_current_version_id` را دوباره بررسی می‌کند.
+- Review، pointer و Audit Event transaction واحد دارند؛ rollback هیچ state جزئی یا
+  رویداد تکراری باقی نمی‌گذارد.
+- Audit endpoint فقط GET است و details آن allowlist محدود شناسه/وضعیت/note دارد؛
+  فایل، ردیف کامل، token، cookie و secret ذخیره یا log نمی‌شوند.

@@ -1,6 +1,7 @@
 # بک‌اند قیمت‌یار
 
-این سرویس FastAPI حساب، نشست سازمانی، تأمین‌کننده و Importهای فایل قیمت را در
+این سرویس FastAPI حساب، نشست سازمانی، تأمین‌کننده، Importهای فایل قیمت و نسخه‌های
+تغییرناپذیر ثبت‌شده را در
 PostgreSQL نگهداری می‌کند. فایل اصلی هر Import در Object Storage سازگار با S3
 (در توسعه محلی MinIO) نگهداری و ردیف‌های canonical آن به‌صورت atomic ذخیره
 می‌شوند. endpoint مقایسه مستقیم دو فایل همچنان stateless است. Redis و worker
@@ -114,7 +115,8 @@ OWNER مجاز به write و OPERATOR مجاز به read است. POST/PATCH به
 POST به Cookie session و `X-CSRF-Token` نیاز دارد. فایل safety-invalid ذخیره
 نمی‌شود؛ خطای کیفیت داده یک Import با وضعیت `FAILED` و بدون ردیف جزئی می‌سازد.
 فایل معتبر با وضعیت `DRAFT` و ردیف‌های استخراج‌شده ذخیره می‌شود. فایل تکراری
-برای همان سازمان و تأمین‌کننده با SHA-256 شناسایی می‌شود. Approval، download و background processing وجود ندارند؛ mapping در Sprint 3 اضافه شده است.
+برای همان سازمان و تأمین‌کننده با SHA-256 شناسایی می‌شود. دانلود عمومی و background
+processing وجود ندارند؛ mapping در Sprint 3 اضافه شده است.
 
 Readiness هم PostgreSQL و هم دسترسی bucket را بررسی می‌کند؛ liveness مستقل از
 هر دو dependency باقی می‌ماند.
@@ -125,3 +127,25 @@ migration `20260906_0008` نگاشت snapshot، parent اجرای اصلاحی �
 سازمانی را اضافه می‌کند. APIهای `/imports/{id}/mapping`، `/imports/{id}/rerun`
 و `/mapping-template` زیر Supplier قرار دارند. ذخیره Template فقط از DRAFT موفق
 ممکن است؛ اجرای مجدد فایل خصوصی را با hash کنترل و run تازه می‌سازد.
+
+## نسخه قیمت Sprint 4
+
+migration `20260918_0009` جدول‌های `price_list_versions` و `price_list_items` را
+اضافه می‌کند. OWNER و OPERATOR می‌توانند Import نوع DRAFT را با آخرین نسخه ثبت‌شده
+همان Supplier مقایسه و با POST دارای CSRF یک snapshot بسازند. ساخت نسخه تحت قفل
+Supplier، شرط `expected_previous_version_id` و unique constraint اجرا می‌شود؛
+Version و همه Itemها یک transaction دارند و هیچ Import یا نسخه قبلی update نمی‌شود.
+
+مسیرهای comparison، create، history، detail، items و changes زیر
+`/api/v1/suppliers/{supplier_id}` قرار دارند. queryهای persistence همواره
+Organization و Supplier را با هم محدود می‌کنند. نسخه ثبت‌شده endpoint ویرایش یا
+حذف ندارد و فقط workflow Sprint 5 می‌تواند Review و current pointer جداگانه را تغییر دهد.
+
+## Approval و Audit در Sprint 5
+
+migration `20260921_0010` Review، current pointer و Audit Log append-only را اضافه
+می‌کند. Version تازه `READY_FOR_REVIEW` است. فقط OWNER و با CSRF می‌تواند آن را
+تأیید یا رد کند؛ OWNER/OPERATOR endpointهای خواندنی را دارند. Approval فقط برای
+آخرین Version و Supplier فعال مجاز است و `expected_current_version_id` همراه lock
+دیتابیس از تصمیم stale و race جلوگیری می‌کند. تصمیم، pointer و Audit Event در یک
+transaction ذخیره می‌شوند.

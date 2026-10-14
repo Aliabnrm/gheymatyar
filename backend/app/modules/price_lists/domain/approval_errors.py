@@ -1,0 +1,29 @@
+from dataclasses import dataclass, field
+from enum import StrEnum
+
+
+class PriceListApprovalErrorCode(StrEnum):
+    APPROVAL_NOT_CONFIRMED = "APPROVAL_NOT_CONFIRMED"
+    REJECTION_NOT_CONFIRMED = "REJECTION_NOT_CONFIRMED"
+    REJECTION_REASON_REQUIRED = "REJECTION_REASON_REQUIRED"
+    DECISION_NOTE_TOO_LONG = "DECISION_NOTE_TOO_LONG"
+    PRICE_LIST_VERSION_NOT_READY_FOR_REVIEW = "PRICE_LIST_VERSION_NOT_READY_FOR_REVIEW"
+    PRICE_LIST_VERSION_ALREADY_APPROVED = "PRICE_LIST_VERSION_ALREADY_APPROVED"
+    PRICE_LIST_VERSION_ALREADY_REJECTED = "PRICE_LIST_VERSION_ALREADY_REJECTED"
+    PRICE_LIST_VERSION_NOT_LATEST = "PRICE_LIST_VERSION_NOT_LATEST"
+    CURRENT_PRICE_VERSION_CHANGED = "CURRENT_PRICE_VERSION_CHANGED"
+    PRICE_LIST_VERSION_APPROVAL_CONFLICT = "PRICE_LIST_VERSION_APPROVAL_CONFLICT"
+    PRICE_LIST_VERSION_NOT_FOUND = "PRICE_LIST_VERSION_NOT_FOUND"
+
+
+@dataclass(slots=True)
+class PriceListApprovalError(Exception):
+    code: PriceListApprovalErrorCode
+    message: str
+    details: dict[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        Exception.__init__(self, self.message)
+
+    def __str__(self) -> str:
+        return self.message

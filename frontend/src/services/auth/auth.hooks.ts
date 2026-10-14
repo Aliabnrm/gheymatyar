@@ -61,6 +61,7 @@ export function clearAuthenticatedData(queryClient: QueryClient): void {
   queryClient.removeQueries({ queryKey: ["price-list-comparison"] });
   queryClient.removeQueries({ queryKey: ["suppliers"] });
   queryClient.removeQueries({ queryKey: ["price-list-imports"] });
+  queryClient.removeQueries({ queryKey: ["price-list-versions"] });
   removeComparisonMutations(queryClient);
   removeSupplierMutations(queryClient);
   removePriceListImportMutations(queryClient);
@@ -82,6 +83,7 @@ function storeAuthenticatedAccount(
   queryClient.removeQueries({ queryKey: ["price-list-comparison"] });
   queryClient.removeQueries({ queryKey: ["suppliers"] });
   queryClient.removeQueries({ queryKey: ["price-list-imports"] });
+  queryClient.removeQueries({ queryKey: ["price-list-versions"] });
   removeComparisonMutations(queryClient);
   removeSupplierMutations(queryClient);
   removePriceListImportMutations(queryClient);

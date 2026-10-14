@@ -29,10 +29,11 @@
        |-- SQLAlchemy AsyncSession / asyncpg --> PostgreSQL 17+
        +-- shared S3 client -----------------> private S3 bucket (MinIO locally)
 
-PostgreSQL منبع persistence حساب‌ها، نشست‌ها، تأمین‌کنندگان، Importها و ردیف‌های
-استخراج‌شده است. فایل اصلی Import در object storage خصوصی نگهداری می‌شود. مقایسه
-دو XLSX همچنان درخواست‌محور، stateless و مستقل از این جریان است؛ Import Draft نیز
-هنوز PriceListVersion یا نسخه approved نمی‌سازد.
+PostgreSQL منبع persistence حساب‌ها، نشست‌ها، تأمین‌کنندگان، Importها، ردیف‌های
+استخراج‌شده و Versionهای تغییرناپذیر است. فایل اصلی Import در object storage خصوصی
+نگهداری می‌شود. مقایسه دو XLSX همچنان درخواست‌محور و stateless است؛ جریان Import
+فقط با اقدام صریح کاربر PriceListVersion می‌سازد و هیچ Versionی خودکار approved یا
+current نمی‌شود.
 
 ## قانون وابستگی
 
@@ -62,7 +63,9 @@ Domain نباید FastAPI، SQLAlchemy، openpyxl، Redis، S3 یا SDK مدل A
 - الگوریتم مقایسه
 - انواع تغییر
 - SourceDocument، ImportRun با وضعیت‌های DRAFT/FAILED و ExtractedRow
+- PriceListVersion، VersionedPriceListItem و lineage تغییرناپذیر
 - use caseهای upload، تاریخچه، detail و pagination ردیف‌ها
+- use caseهای مقایسه Import، ساخت Version و گزارش تغییر تاریخی
 - portهای صریح repository، document storage و extractor async
 - adapterهای SQLAlchemy، S3 و اجرای openpyxl خارج از event loop
 
@@ -78,7 +81,8 @@ Import متعلق به bounded context `price_lists` است و به ماژول g
 - soft deactivation و uniqueness نام canonical در هر سازمان
 - routeهای خواندنی OWNER/OPERATOR و mutationهای OWNER با CSRF
 
-quotations، PriceListVersion و approval هنوز کد یا جدول ندارند؛ mapping correction در Sprint 3 اضافه شده است.
+quotations هنوز کد یا جدول ندارند؛ mapping correction در Sprint 3، Versioning در
+Sprint 4 و Approval/Current/Audit در Sprint 5 اضافه شده‌اند.
 
 ## راه‌اندازی برنامه و مرزهای مشترک
 
@@ -152,15 +156,14 @@ lifespan در shutdown engine و resource ذخیره‌سازی را می‌بن
 - source_documents
 - import_runs
 - extracted_rows
-
-جدول‌های زیرمرحله‌های بعد:
-
 - price_list_versions
 - price_list_items
-- price_changes
+- price_list_version_reviews
+- current_price_list_versions
 - audit_logs
 
-نسخه‌ها immutable هستند. اصلاح یک نسخه تأییدشده، نسخه جدید می‌سازد.
+نسخه‌های ثبت‌شده immutable هستند. price_changes جدول جدا ندارد و گزارش با الگوریتم
+قطعی از دو snapshot محاسبه می‌شود. Review و current pointer جدا از snapshot هستند.
 
 ## API
 
@@ -175,6 +178,16 @@ lifespan در shutdown engine و resource ذخیره‌سازی را می‌بن
 - POST/GET /api/v1/suppliers/{supplier_id}/imports
 - GET /api/v1/suppliers/{supplier_id}/imports/{import_id}
 - GET /api/v1/suppliers/{supplier_id}/imports/{import_id}/rows
+- GET /api/v1/suppliers/{supplier_id}/imports/{import_id}/comparison
+- POST /api/v1/suppliers/{supplier_id}/imports/{import_id}/version
+- GET /api/v1/suppliers/{supplier_id}/price-list-versions
+- GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}
+- GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/items
+- GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/changes
+- GET /api/v1/suppliers/{supplier_id}/price-list-versions/current
+- POST /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/approve
+- POST /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/reject
+- GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/audit-events
 - POST /api/v1/price-lists/compare
 
 `live` عمومی و مستقل از dependencyها است؛ `ready` با `SELECT 1` PostgreSQL و request
@@ -232,3 +245,31 @@ Supplier و Import مرجع متصل است. unique index جزئی و قفل Sup
 اجرای مجدد فایل را از key خصوصی ثبت‌شده می‌خواند، اندازه و hash را کنترل می‌کند،
 خارج transaction استخراج می‌کند و run/تمام ردیف‌ها را در یک transaction کوتاه
 درج می‌کند. در شکست هیچ ردیف جزئی و هیچ object تازه‌ای باقی نمی‌ماند.
+
+## نسخه‌های تغییرناپذیر و baseline (ADR 0009)
+
+Version domain و الگوریتم comparison مستقل از framework هستند. application به port
+کوچک Version store وابسته است؛ SQLAlchemy mapping، queryهای tenant-scoped و bulk
+insert در infrastructure و schemaهای Pydantic در presentation باقی می‌مانند.
+
+ساخت Version در یک transaction با lock ردیف Supplier انجام می‌شود. آخرین Version
+با `expected_previous_version_id` مقایسه می‌شود، شماره بعدی تعیین و snapshot تمام
+ExtractedRowها batch insert می‌شود. unique constraintهای شماره، Import، predecessor
+و کد کالا مرز نهایی race هستند. یکی از درخواست‌های هم‌زمان برنده و دیگری با
+`PRICE_LIST_BASELINE_CHANGED` یا duplicate امن متوقف می‌شود.
+
+گزارش Import نسخه‌نشده با آخرین Version مقایسه می‌شود. اگر Import قبلاً Version
+ساخته باشد، baseline از `previous_version_id` همان Version خوانده می‌شود؛ بنابراین
+Versionهای بعدی گزارش تاریخی آن را تغییر نمی‌دهند. فایل XLSX دوباره parse نمی‌شود.
+
+## Approval، current pointer و Audit (ADR 0010)
+
+Review workflow در Domain مستقل و use caseهای approve/reject در Application قرار
+دارد. adapter SQLAlchemy در transaction واحد Supplier، Version، Review و pointer را
+با scope سازمان lock می‌کند، latest Version و Import معتبر را بازبینی می‌کند و سپس
+Review، current pointer و Audit Event را اتمیک ذخیره می‌کند. CAS ورودی API صفحه stale
+را متوقف و lock دیتابیس تصمیم هم‌زمان را serialize می‌کند.
+
+Audit append-only و صفحه‌بندی‌شده است. history/detail با join محدود Review و pointer
+را بدون N+1 برمی‌گردانند. Approval هیچ VersionItem را نمی‌خواند یا تغییر نمی‌دهد و
+برای تعیین current فایل XLSX دوباره parse نمی‌شود.

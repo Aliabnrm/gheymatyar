@@ -9,10 +9,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import Settings
 from app.core.middleware import add_security_headers, get_request_id
 from app.modules.accounts.domain.errors import AccountError, AccountErrorCode
+from app.modules.price_lists.domain.approval_errors import (
+    PriceListApprovalError,
+    PriceListApprovalErrorCode,
+)
 from app.modules.price_lists.domain.errors import PriceListError, PriceListErrorCode
 from app.modules.price_lists.domain.import_errors import (
     PriceListImportError,
     PriceListImportErrorCode,
+)
+from app.modules.price_lists.domain.version_errors import (
+    PriceListVersionError,
+    PriceListVersionErrorCode,
 )
 from app.modules.suppliers.domain.errors import SupplierError, SupplierErrorCode
 
@@ -115,6 +123,51 @@ async def handle_price_list_import_error(request: Request, exc: Exception) -> JS
     )
 
 
+async def handle_price_list_version_error(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, PriceListVersionError):
+        raise exc
+    status_codes = {
+        PriceListVersionErrorCode.IMPORT_NOT_READY_FOR_VERSION: 422,
+        PriceListVersionErrorCode.PRICE_LIST_VERSION_ALREADY_EXISTS: 409,
+        PriceListVersionErrorCode.PRICE_LIST_VERSION_NOT_FOUND: 404,
+        PriceListVersionErrorCode.PRICE_LIST_BASELINE_CHANGED: 409,
+        PriceListVersionErrorCode.VERSION_CREATION_NOT_CONFIRMED: 422,
+        PriceListVersionErrorCode.VERSION_ITEM_CONFLICT: 409,
+    }
+    return _error_response(
+        request,
+        status_code=status_codes[exc.code],
+        code=exc.code.value,
+        message=exc.message,
+        details=exc.details,
+    )
+
+
+async def handle_price_list_approval_error(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, PriceListApprovalError):
+        raise exc
+    validation_errors = {
+        PriceListApprovalErrorCode.APPROVAL_NOT_CONFIRMED,
+        PriceListApprovalErrorCode.REJECTION_NOT_CONFIRMED,
+        PriceListApprovalErrorCode.REJECTION_REASON_REQUIRED,
+        PriceListApprovalErrorCode.DECISION_NOTE_TOO_LONG,
+    }
+    not_found_errors = {PriceListApprovalErrorCode.PRICE_LIST_VERSION_NOT_FOUND}
+    if exc.code in validation_errors:
+        status_code = 422
+    elif exc.code in not_found_errors:
+        status_code = 404
+    else:
+        status_code = 409
+    return _error_response(
+        request,
+        status_code=status_code,
+        code=exc.code.value,
+        message=exc.message,
+        details=exc.details,
+    )
+
+
 async def handle_supplier_error(request: Request, exc: Exception) -> JSONResponse:
     if not isinstance(exc, SupplierError):
         raise exc
@@ -195,6 +248,8 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(PriceListError, handle_price_list_error)
     app.add_exception_handler(PriceListImportError, handle_price_list_import_error)
+    app.add_exception_handler(PriceListVersionError, handle_price_list_version_error)
+    app.add_exception_handler(PriceListApprovalError, handle_price_list_approval_error)
     app.add_exception_handler(AccountError, handle_account_error)
     app.add_exception_handler(SupplierError, handle_supplier_error)
     app.add_exception_handler(RequestValidationError, handle_request_validation_error)

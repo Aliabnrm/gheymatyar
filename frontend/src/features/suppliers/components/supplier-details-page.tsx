@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportHistory } from "@/features/price-list-imports";
+import {
+  CurrentVersionCard,
+  VersionHistory,
+} from "@/features/price-list-versions";
 import { useCurrentAccountQuery } from "@/services/auth";
 import {
   useSupplierQuery,
@@ -179,7 +183,9 @@ export function SupplierDetailsPage({ supplierId }: { supplierId: string }) {
           </CardContent>
         </Card>
       ) : null}
+      <CurrentVersionCard supplierId={supplierId} />
       <ImportHistory supplierId={supplierId} supplierIsActive={data.isActive} />
+      <VersionHistory supplierId={supplierId} />
     </main>
   );
 }

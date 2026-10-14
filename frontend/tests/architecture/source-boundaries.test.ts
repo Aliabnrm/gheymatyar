@@ -65,4 +65,18 @@ describe("frontend source boundaries", () => {
     expect(importService).not.toMatch(/@\/features\//);
     expect(importService).not.toMatch(/@\/components\//);
   });
+
+  it("keeps price-list version transport and tenant identity out of features", () => {
+    const versionFeature = readTypeScriptTree(
+      "src/features/price-list-versions",
+    );
+    const versionService = readTypeScriptTree(
+      "src/services/price-list-versions",
+    );
+
+    expect(versionFeature).not.toMatch(/\bfetch\s*\(/);
+    expect(versionFeature).not.toMatch(/\borganizationId\b/);
+    expect(versionService).not.toMatch(/@\/features\//);
+    expect(versionService).not.toMatch(/@\/components\//);
+  });
 });

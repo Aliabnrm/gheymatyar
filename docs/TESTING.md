@@ -200,3 +200,44 @@ MinIO محلی و bucket خصوصی پیش از اجرا آماده شدند. fi
 
 نتیجه نهایی این اجرا: **۱۴۴ تست بک‌اند و ۹۶ تست فرانت‌اند موفق، بدون skip**.
 گزارش فایل‌ها و تصمیم‌ها در [SPRINT3_REPORT_FA.md](SPRINT3_REPORT_FA.md) است.
+
+## پوشش Sprint 4 — 2026-09-18
+
+تست‌های domain و application، lineage نسخه اول/بعدی، حفظ صفر ابتدایی کد، تبدیل
+VersionItem برای comparison، تغییر هم‌زمان قیمت/واحد/بسته و summary مستقل از فیلتر
+را پوشش می‌دهند. integration واقعی PostgreSQL شامل این موارد است:
+
+- ساخت نسخه توسط OWNER/OPERATOR با Session و CSRF و رد confirmation ناقص
+- اولین baseline، Version شماره ۱ و زنجیره Version شماره ۲
+- duplicate Import، stale baseline، Supplier غیرفعال و Import نامعتبر
+- tenant و Supplier isolation برای read/write
+- constraintهای composite و OpenAPI مسیرهای جدید
+- fixture مرجع ۲۴/۲۴، ۲ اضافه، ۲ حذف، ۱۸ تغییر قیمت، ۲ metadata-only، ۲ بدون تغییر
+  و تغییر بسته `ACC-RJ45-CAT6-100`
+- ثابت‌ماندن baseline گزارش Import نسخه‌شده و گزارش Version تاریخی
+
+فرانت‌اند schemaهای معتبر/نامعتبر، path و query params، CSRF، AbortSignal، query
+keyهای Supplier-scoped، invalidation هدفمند، conflict refresh و نبود retry mutation
+را بررسی می‌کند. تست component حالت loading، no-baseline، success، server error،
+Supplier غیرفعال، confirmation، conflict، history خالی، چند badge، zero-leading code،
+مبلغ ریالی، escaping متن untrusted و table semantic را پوشش می‌دهد. architecture
+test نیز fetch و organizationId را از feature و وابستگی UI را از service دور نگه می‌دارد.
+
+نتیجه نهایی فرمان‌های کامل و migration verification در
+[SPRINT4_REPORT_FA.md](SPRINT4_REPORT_FA.md) ثبت می‌شود.
+
+## پوشش Sprint 5 — 2026-09-21
+
+Backend transition آماده به تأیید/رد، terminal بودن تصمیم‌ها، دلیل اجباری، طول note،
+actor/time، atomic بودن pointer و Audit، current خالی، جایگزینی current، باقی‌ماندن
+Approved قبلی، latest-only، stale CAS، race دو Approval، نقش OWNER/OPERATOR، CSRF و
+tenant isolation را پوشش می‌دهد. constraintها و GET-only بودن Audit نیز از schema
+واقعی PostgreSQL و OpenAPI بررسی می‌شوند.
+
+Frontend وضعیت‌های Review و Current، schemaهای تصمیم/Audit، path و body و CSRF،
+AbortSignal readها، query keyهای scoped، نبود retry و optimistic update، invalidation
+پس از success/conflict و componentهای Approval، rejection validation، Operator
+read-only، current empty/error و Audit empty/error را تست می‌کند.
+
+نتیجه نهایی suite کامل، lint/typecheck/build و migration verification در
+[SPRINT5_REPORT_FA.md](SPRINT5_REPORT_FA.md) ثبت می‌شود.

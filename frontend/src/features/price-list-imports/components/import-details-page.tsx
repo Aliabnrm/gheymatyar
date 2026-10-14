@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePriceListImportQuery } from "@/services/price-list-imports";
+import { ImportChangeReview } from "@/features/price-list-versions";
 import { formatInteger } from "@/utils/format";
 
 import { ColumnMappingPanel } from "./column-mapping-panel";
@@ -138,17 +139,23 @@ export function ImportDetailsPage({
       ) : null}
 
       {data.status === "DRAFT" ? (
-        <section className="grid gap-4" aria-labelledby="extracted-rows-title">
-          <div>
-            <h2 id="extracted-rows-title" className="text-xl font-semibold">
-              ردیف‌های استخراج‌شده
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              این داده‌ها پیش‌نویس‌اند و هنوز تأیید یا منتشر نشده‌اند.
-            </p>
-          </div>
-          <ExtractedRowsTable supplierId={supplierId} importId={importId} />
-        </section>
+        <>
+          <ImportChangeReview supplierId={supplierId} importId={importId} />
+          <section
+            className="grid gap-4"
+            aria-labelledby="extracted-rows-title"
+          >
+            <div>
+              <h2 id="extracted-rows-title" className="text-xl font-semibold">
+                ردیف‌های استخراج‌شده
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                این داده‌ها پیش‌نویس‌اند و هنوز تأیید یا منتشر نشده‌اند.
+              </p>
+            </div>
+            <ExtractedRowsTable supplierId={supplierId} importId={importId} />
+          </section>
+        </>
       ) : null}
     </main>
   );

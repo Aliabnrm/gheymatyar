@@ -391,3 +391,137 @@ GET جزئیات و تاریخچه نیز دو فیلد جدید را دارند
 
 UUID سازمان دیگر مانند رکورد ناموجود پاسخ 404 می‌گیرد. خطای storage، 503 امن
 و خطای داخلی، 500 بدون متن SQL، فایل یا stack trace برمی‌گرداند.
+
+## Sprint 4: نسخه‌های تغییرناپذیر قیمت
+
+همه مسیرها Session سازمانی و نقش OWNER یا OPERATOR می‌خواهند. GETها فقط خواندنی‌اند؛
+POST ساخت Version به CSRF نیاز دارد و برای Supplier غیرفعال با
+`409 SUPPLIER_INACTIVE` متوقف می‌شود. `organization_id` از client پذیرفته نمی‌شود.
+
+### مقایسه Import با baseline ثبت‌شده
+
+    GET /api/v1/suppliers/{supplier_id}/imports/{import_id}/comparison
+        ?change_type=PACK_SIZE_CHANGED&limit=50&offset=0
+
+`change_type` اختیاری و یکی از enumهای change دامنه است. summary همیشه از کل دو
+snapshot محاسبه و سپس فیلتر و pagination روی items اعمال می‌شود. پاسخ نمونه:
+
+    {
+      "import_id":"2f04c0aa-5644-40c7-9268-426b2e228f60",
+      "created_version":null,
+      "baseline_version":{
+        "id":"b3aa21c1-5012-4ae0-8d06-a8e7a9446810",
+        "version_number":1,
+        "created_at":"2026-09-17T08:00:00Z"
+      },
+      "summary":{
+        "old_items":24,"new_items":24,"added":2,"removed":2,
+        "price_changed":18,"price_increased":10,"price_decreased":8,
+        "metadata_only_changed":2,"unchanged":2,"high_risk":1
+      },
+      "items":[],"total":24,"limit":50,"offset":0
+    }
+
+برای اولین Version، `baseline_version` و `summary` تهی، items خالی و total صفرند.
+اگر Import قبلاً Version ساخته باشد، `created_version` قرارداد کامل همان Version
+است و baseline گزارش از predecessor تاریخی آن گرفته می‌شود، نه آخرین Version امروز.
+
+### ساخت Version
+
+    POST /api/v1/suppliers/{supplier_id}/imports/{import_id}/version
+    X-CSRF-Token: <csrf cookie>
+    Content-Type: application/json
+
+    {
+      "expected_previous_version_id":"b3aa21c1-5012-4ae0-8d06-a8e7a9446810",
+      "confirm_create":true
+    }
+
+برای نسخه اول مقدار مورد انتظار null است. پاسخ موفق `201` شامل id، Supplier،
+Import منبع، predecessor، شماره نسخه، ثبت‌کننده، تعداد ردیف و زمان UTC است. ساخت
+Version به‌معنای Approval یا جاری‌شدن قیمت نیست. هیچ PATCH یا DELETE برای Version
+وجود ندارد.
+
+### تاریخچه، جزئیات، کالاها و تغییرات
+
+    GET /api/v1/suppliers/{supplier_id}/price-list-versions?limit=20&offset=0
+    GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}
+    GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/items?limit=50&offset=0
+    GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/changes?limit=50&offset=0
+
+history بر اساس `version_number DESC` و items بر اساس source row مرتب است. گزارش
+changes همیشه با `previous_version_id` ثبت‌شده همان Version محاسبه می‌شود و با
+ساخت Version جدید تغییر نمی‌کند. Version اول baseline و summary ندارد.
+
+کدهای پایدار افزوده:
+
+- `IMPORT_NOT_READY_FOR_VERSION` (422)
+- `PRICE_LIST_VERSION_ALREADY_EXISTS` (409)
+- `PRICE_LIST_VERSION_NOT_FOUND` (404)
+- `PRICE_LIST_BASELINE_CHANGED` (409)
+- `VERSION_CREATION_NOT_CONFIRMED` (422)
+- `VERSION_ITEM_CONFLICT` (409)
+
+## Sprint 5: Review، Approval، Current و Audit
+
+پاسخ list/detail نسخه علاوه بر فیلدهای Sprint 4 این موارد را دارد:
+
+    {
+      "review_status":"READY_FOR_REVIEW",
+      "decided_by_user_id":null,
+      "decided_by_email":null,
+      "decided_at":null,
+      "decision_note":null,
+      "is_current":false
+    }
+
+### تأیید نسخه
+
+فقط OWNER، با Session و CSRF معتبر:
+
+    POST /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/approve
+    {
+      "expected_current_version_id":null,
+      "confirm_approval":true,
+      "decision_note":"تغییرات فایل بررسی شد."
+    }
+
+Version باید آخرین نسخه ثبت‌شده، `READY_FOR_REVIEW`، متعلق به Import نوع DRAFT و
+Supplier فعال باشد. پاسخ شامل Review تازه، current قبلی و current جدید است. تغییر
+هم‌زمان pointer با `409 CURRENT_PRICE_VERSION_CHANGED` متوقف می‌شود و درخواست خودکار
+تکرار نمی‌شود.
+
+### رد نسخه
+
+فقط OWNER، با دلیل trim‌شده ۱ تا ۵۰۰ نویسه:
+
+    POST /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/reject
+    {
+      "confirm_rejection":true,
+      "reason":"تغییر تعداد بسته با فایل اصلی مطابقت ندارد."
+    }
+
+Reject فقط Review و Audit Event را ثبت می‌کند و current قبلی را تغییر نمی‌دهد.
+Approved و Rejected terminal هستند.
+
+### قیمت جاری و Audit
+
+    GET /api/v1/suppliers/{supplier_id}/price-list-versions/current
+    GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/audit-events?limit=20&offset=0
+
+نبود current پاسخ پایدار `{"current_version":null}` دارد. Audit با ترتیب قطعی
+`occurred_at DESC, id DESC` صفحه‌بندی می‌شود و فقط action، actor، زمان، entity و
+metadata محدود تصمیم را برمی‌گرداند؛ مسیر update/delete ندارد.
+
+کدهای پایدار Sprint 5:
+
+- `APPROVAL_NOT_CONFIRMED` و `REJECTION_NOT_CONFIRMED` (422)
+- `REJECTION_REASON_REQUIRED` و `DECISION_NOTE_TOO_LONG` (422)
+- `PRICE_LIST_VERSION_NOT_FOUND` (404)
+- `PRICE_LIST_VERSION_NOT_LATEST` (409)
+- `CURRENT_PRICE_VERSION_CHANGED` (409)
+- `PRICE_LIST_VERSION_ALREADY_APPROVED` و `PRICE_LIST_VERSION_ALREADY_REJECTED` (409)
+- `PRICE_LIST_VERSION_NOT_READY_FOR_REVIEW` و `PRICE_LIST_VERSION_APPROVAL_CONFLICT` (409)
+
+منبع cross-tenant برای approve/reject/current/audit همان 404 امن دارد. `organization_id`
+هیچ‌گاه در body یا query دریافت نمی‌شود.

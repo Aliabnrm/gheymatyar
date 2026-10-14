@@ -20,13 +20,33 @@ from app.modules.accounts.application.validate_csrf import ValidateCsrf
 from app.modules.accounts.infrastructure.passwords import Argon2PasswordHasher
 from app.modules.accounts.infrastructure.repositories import SqlAlchemyAccountStore
 from app.modules.accounts.infrastructure.tokens import SecureTokenService
+from app.modules.price_lists.application.approval_queries import (
+    GetCurrentPriceListVersion,
+    ListPriceListVersionAuditEvents,
+)
+from app.modules.price_lists.application.approve_price_list_version import (
+    ApprovePriceListVersion,
+)
 from app.modules.price_lists.application.create_import import CreatePriceListImport
+from app.modules.price_lists.application.create_price_list_version import CreatePriceListVersion
 from app.modules.price_lists.application.get_import import GetPriceListImport
 from app.modules.price_lists.application.import_ports import DocumentStorageRuntime
 from app.modules.price_lists.application.import_services import PriceListImportServices
 from app.modules.price_lists.application.list_extracted_rows import ListExtractedRows
 from app.modules.price_lists.application.list_imports import ListPriceListImports
 from app.modules.price_lists.application.mapping_services import MappingServices
+from app.modules.price_lists.application.reject_price_list_version import RejectPriceListVersion
+from app.modules.price_lists.application.version_queries import (
+    GetImportChangeReport,
+    GetPriceListVersion,
+    GetVersionChangeReport,
+    ListPriceListVersionItems,
+    ListPriceListVersions,
+)
+from app.modules.price_lists.application.version_services import PriceListVersionServices
+from app.modules.price_lists.infrastructure.approval_repositories import (
+    SqlAlchemyPriceListApprovalStore,
+)
 from app.modules.price_lists.infrastructure.import_repositories import (
     SqlAlchemyPriceListImportStore,
 )
@@ -37,6 +57,9 @@ from app.modules.price_lists.infrastructure.s3_document_storage import (
 from app.modules.price_lists.infrastructure.threaded_extractor import ThreadedPriceListExtractor
 from app.modules.price_lists.infrastructure.threaded_mapping_extractor import (
     ThreadedMappingExtractor,
+)
+from app.modules.price_lists.infrastructure.version_repositories import (
+    SqlAlchemyPriceListVersionStore,
 )
 from app.modules.price_lists.infrastructure.xlsx_extractor import (
     XlsxExtractionLimits,
@@ -78,6 +101,8 @@ def create_app(
     extractor = ThreadedPriceListExtractor(xlsx_extractor)
     mapping_extractor = ThreadedMappingExtractor(xlsx_extractor)
     mapping_store = SqlAlchemyMappingStore(database.session_factory)
+    version_store = SqlAlchemyPriceListVersionStore(database.session_factory)
+    approval_store = SqlAlchemyPriceListApprovalStore(database.session_factory)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -143,6 +168,18 @@ def create_app(
         list=ListPriceListImports(import_store),
         get=GetPriceListImport(import_store),
         list_rows=ListExtractedRows(import_store),
+    )
+    application.state.price_list_version_services = PriceListVersionServices(
+        create=CreatePriceListVersion(version_store),
+        list=ListPriceListVersions(version_store),
+        get=GetPriceListVersion(version_store),
+        list_items=ListPriceListVersionItems(version_store),
+        import_changes=GetImportChangeReport(version_store),
+        version_changes=GetVersionChangeReport(version_store),
+        approve=ApprovePriceListVersion(approval_store),
+        reject=RejectPriceListVersion(approval_store),
+        current=GetCurrentPriceListVersion(approval_store, version_store),
+        audit_events=ListPriceListVersionAuditEvents(approval_store),
     )
     application.add_middleware(
         CORSMiddleware,

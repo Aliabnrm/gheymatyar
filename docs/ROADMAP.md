@@ -25,8 +25,8 @@
 
 ## مرحله ۲ — Persistence، هویت و Import پایدار
 
-وضعیت: foundation، Supplier و Import Draft پایدار انجام‌شده‌اند؛ versioning و
-approval هنوز شروع نشده‌اند.
+وضعیت: foundation، Supplier، Import Draft، نگاشت، Version تغییرناپذیر و Approval
+انجام‌شده‌اند.
 
 ترتیب اجرایی این مرحله عمداً چنین است:
 
@@ -35,13 +35,14 @@ approval هنوز شروع نشده‌اند.
 3. Organization Membership و نقش‌های OWNER/OPERATOR — انجام‌شده
 4. Supplier — انجام‌شده
 5. SourceDocument، ImportRun، ExtractedRows و نگهداری فایل اصلی — انجام‌شده
-6. template و اصلاح نگاشت ستون — شروع‌نشده
-7. PriceListVersion و مقایسه با آخرین نسخه approved — شروع‌نشده
-8. Draft نسخه، Approval و Audit Log — شروع‌نشده
+6. template و اصلاح نگاشت ستون — انجام‌شده
+7. PriceListVersion و مقایسه با آخرین نسخه ثبت‌شده — انجام‌شده
+8. Approval، Reject، Current Price و Audit Log — انجام‌شده
 
 مقایسه XLSX فعلی فقط پس از احراز هویت قابل استفاده و همچنان stateless است. مسیر
-مستقل Import فایل اصلی، metadata و ردیف‌های canonical را نگه می‌دارد، اما هیچ
-Importی هنوز PriceListVersion جاری یا approved ایجاد نمی‌کند.
+مستقل Import فایل اصلی، metadata و ردیف‌های canonical را نگه می‌دارد. ساخت
+PriceListVersion با اقدام صریح ساخته می‌شود و فقط OWNER می‌تواند آخرین نسخه را پس
+از بازبینی تأیید و به قیمت جاری تبدیل کند.
 
 ## مرحله ۳ — پردازش background
 
