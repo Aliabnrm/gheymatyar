@@ -29,6 +29,7 @@ from app.modules.price_lists.application.approve_price_list_version import (
 )
 from app.modules.price_lists.application.create_import import CreatePriceListImport
 from app.modules.price_lists.application.create_price_list_version import CreatePriceListVersion
+from app.modules.price_lists.application.current_price_impact import GetCurrentPriceImpact
 from app.modules.price_lists.application.get_import import GetPriceListImport
 from app.modules.price_lists.application.import_ports import DocumentStorageRuntime
 from app.modules.price_lists.application.import_services import PriceListImportServices
@@ -45,6 +46,7 @@ from app.modules.price_lists.application.version_queries import (
 )
 from app.modules.price_lists.application.version_services import PriceListVersionServices
 from app.modules.price_lists.infrastructure.approval_repositories import (
+    SqlAlchemyCurrentPriceImpactReader,
     SqlAlchemyPriceListApprovalStore,
 )
 from app.modules.price_lists.infrastructure.import_repositories import (
@@ -103,6 +105,7 @@ def create_app(
     mapping_store = SqlAlchemyMappingStore(database.session_factory)
     version_store = SqlAlchemyPriceListVersionStore(database.session_factory)
     approval_store = SqlAlchemyPriceListApprovalStore(database.session_factory)
+    current_impact_reader = SqlAlchemyCurrentPriceImpactReader(database.session_factory)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -180,6 +183,7 @@ def create_app(
         reject=RejectPriceListVersion(approval_store),
         current=GetCurrentPriceListVersion(approval_store, version_store),
         audit_events=ListPriceListVersionAuditEvents(approval_store),
+        current_impact=GetCurrentPriceImpact(current_impact_reader),
     )
     application.add_middleware(
         CORSMiddleware,

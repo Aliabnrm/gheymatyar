@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -16,6 +16,7 @@ from .version_schemas import (
     ApprovePriceListVersionRequest,
     AuditEventPageResponse,
     CreatePriceListVersionRequest,
+    CurrentPriceImpactResponse,
     CurrentPriceListVersionResponse,
     ImportChangeReportResponse,
     PriceListVersionItemPageResponse,
@@ -49,6 +50,40 @@ ApprovalWriteContext = Annotated[
     CurrentAccountContext,
     Depends(require_roles(OrganizationRole.OWNER, require_csrf=True)),
 ]
+
+_CURRENT_IMPACT_RESPONSES: dict[int | str, dict[str, Any]] = {
+    404: {
+        "model": ApiErrorResponse,
+        "description": "تأمین‌کننده یا نسخه در محدوده سازمان پیدا نشد.",
+    },
+    409: {
+        "model": ApiErrorResponse,
+        "description": "مبنای جاری یا وضعیت نسخه تغییر کرده یا ناسازگار است.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "current_changed": {
+                        "summary": "قیمت جاری پس از مشاهده گزارش تغییر کرده است.",
+                        "value": {
+                            "error": {
+                                "code": "CURRENT_PRICE_VERSION_CHANGED",
+                                "message": (
+                                    "قیمت جاری تغییر کرده است؛ گزارش تازه را دوباره بررسی کنید."
+                                ),
+                                "details": {},
+                            },
+                            "request_id": "b7f4c2d88ee54f969f647a192f398ddd",
+                        },
+                    }
+                }
+            }
+        },
+    },
+    422: {
+        "model": ApiErrorResponse,
+        "description": "پارامترهای pin یا صفحه‌بندی معتبر نیستند.",
+    },
+}
 
 
 @router.get(
@@ -277,6 +312,37 @@ async def get_price_list_version_changes(
             organization_id=current.account.organization_id,
             supplier_id=supplier_id,
             version_id=version_id,
+            change_type=change_type,
+            limit=limit,
+            offset=offset,
+        )
+    )
+
+
+@router.get(
+    "/price-list-versions/{version_id}/current-impact",
+    response_model=CurrentPriceImpactResponse,
+    responses=_CURRENT_IMPACT_RESPONSES,
+    summary="اثر نسخه آماده بررسی بر قیمت جاری تأییدشده",
+)
+async def get_current_price_impact(
+    supplier_id: UUID,
+    version_id: UUID,
+    services: Services,
+    current: ReadContext,
+    baseline_version_id: Annotated[UUID | None, Query()] = None,
+    expect_no_current: Annotated[bool, Query()] = False,
+    change_type: Annotated[ChangeType | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> CurrentPriceImpactResponse:
+    return CurrentPriceImpactResponse.from_domain(
+        await services.current_impact.execute(
+            organization_id=current.account.organization_id,
+            supplier_id=supplier_id,
+            version_id=version_id,
+            baseline_version_id=baseline_version_id,
+            expect_no_current=expect_no_current,
             change_type=change_type,
             limit=limit,
             offset=offset,

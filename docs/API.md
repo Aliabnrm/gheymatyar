@@ -525,3 +525,67 @@ metadata محدود تصمیم را برمی‌گرداند؛ مسیر update/de
 
 منبع cross-tenant برای approve/reject/current/audit همان 404 امن دارد. `organization_id`
 هیچ‌گاه در body یا query دریافت نمی‌شود.
+
+## اثر نسخه آماده بررسی بر قیمت جاری
+
+برای پاسخ به سؤال عملیاتی «اگر این نسخه تأیید شود، قیمت جاری چه تغییری می‌کند؟»:
+
+    GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/current-impact
+
+این endpoint فقط برای Version دارای `READY_FOR_REVIEW` است. `/changes` همچنان
+گزارش تاریخی نسبت به predecessor ثبت‌شده باقی می‌ماند؛ `current-impact` فقط با
+Version اشاره‌شده توسط current pointer همان Supplier و Organization مقایسه می‌کند.
+XLSX دوباره خوانده نمی‌شود و هر دو طرف از snapshotهای تغییرناپذیر Version می‌آیند.
+
+Queryهای گزارش:
+
+- `change_type` اختیاری، مطابق ChangeTypeهای فعلی
+- `limit` از ۱ تا ۱۰۰ و `offset` نامنفی
+- `baseline_version_id` برای pinکردن Current دیده‌شده
+- `expect_no_current=true` برای pinکردن نبود Current
+
+دو pin آخر هم‌زمان مجاز نیستند. درخواست اول بدون pin مبنا را resolve می‌کند؛
+صفحه‌ها و refetchهای بعدی باید همان UUID یا انتظار نبود Current را بازگردانند. اگر
+Current عوض شده باشد، پاسخ `409 CURRENT_PRICE_VERSION_CHANGED` است.
+
+پاسخ Current موجود:
+
+    {
+      "target_version":{"id":"uuid-v3","version_number":3,"created_at":"2026-10-14T08:00:00Z"},
+      "baseline_status":"CURRENT_BASELINE",
+      "baseline_version":{"id":"uuid-v1","version_number":1,"created_at":"2026-10-12T08:00:00Z"},
+      "is_latest":true,
+      "supplier_is_active":true,
+      "summary":{"old_items":2,"new_items":2,"added":1,"removed":1,"price_changed":1,"price_increased":1,"price_decreased":0,"metadata_only_changed":0,"unchanged":0,"high_risk":1},
+      "items":[],
+      "total":3,
+      "limit":50,
+      "offset":0
+    }
+
+اگر Current وجود نداشته باشد، قرارداد صریح `NO_CURRENT` است:
+
+    {
+      "target_version":{"id":"uuid-v1","version_number":1,"created_at":"2026-10-12T08:00:00Z"},
+      "baseline_status":"NO_CURRENT",
+      "baseline_version":null,
+      "is_latest":true,
+      "supplier_is_active":true,
+      "summary":null,
+      "items":[],
+      "total":0,
+      "limit":50,
+      "offset":0
+    }
+
+`summary` همیشه روی همه ردیف‌ها محاسبه می‌شود؛ `total` تعداد ردیف‌های پس از فیلتر
+و پیش از pagination است. Approval مقدار `expected_current_version_id` را دقیقاً از
+مبنای همین گزارش می‌گیرد؛ برای `NO_CURRENT` مقدار null می‌فرستد.
+
+کدهای پایدار افزوده:
+
+- `CURRENT_PRICE_IMPACT_PIN_INVALID` (422)
+- `CURRENT_PRICE_VERSION_CHANGED` (409)
+- `CURRENT_PRICE_VERSION_INVALID` (409)
+- `PRICE_LIST_VERSION_NOT_READY_FOR_REVIEW` (409)
+- `PRICE_LIST_VERSION_NOT_FOUND` (404)

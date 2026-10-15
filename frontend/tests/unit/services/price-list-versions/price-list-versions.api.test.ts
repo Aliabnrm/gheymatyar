@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   approvePriceListVersionApi,
   createPriceListVersionApi,
+  getCurrentPriceImpactApi,
   getCurrentPriceListVersionApi,
   getImportChangeReportApi,
   listPriceListVersionAuditEventsApi,
@@ -14,6 +15,7 @@ import {
   APPROVAL_RESULT_API_FIXTURE,
   APPROVED_VERSION_API_FIXTURE,
   AUDIT_EVENT_API_FIXTURE,
+  CURRENT_PRICE_IMPACT_API_FIXTURE,
   IMPORT_CHANGE_REPORT_API_FIXTURE,
   PREVIOUS_VERSION_ID,
   VERSION_API_FIXTURE,
@@ -163,5 +165,36 @@ describe("price-list versions API", () => {
     expect((fetchMock.mock.calls[1]?.[1] as RequestInit).signal).toBe(
       controller.signal,
     );
+  });
+
+  it("reads current impact with a pinned baseline, filter and AbortSignal", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(CURRENT_PRICE_IMPACT_API_FIXTURE), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+
+    await getCurrentPriceImpactApi(
+      IMPORT_API_FIXTURE.supplier.id,
+      VERSION_API_FIXTURE.id,
+      {
+        baselineVersionId: PREVIOUS_VERSION_ID,
+        expectNoCurrent: false,
+        changeType: "PACK_SIZE_CHANGED",
+        limit: 25,
+        offset: 50,
+      },
+      controller.signal,
+    );
+
+    const [url, request] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain(`/${VERSION_API_FIXTURE.id}/current-impact`);
+    expect(String(url)).toContain(`baseline_version_id=${PREVIOUS_VERSION_ID}`);
+    expect(String(url)).toContain("change_type=PACK_SIZE_CHANGED");
+    expect(String(url)).toContain("limit=25&offset=50");
+    expect((request as RequestInit).signal).toBe(controller.signal);
   });
 });

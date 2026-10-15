@@ -14,6 +14,11 @@ class ReviewStatus(StrEnum):
     REJECTED = "REJECTED"
 
 
+class CurrentPriceImpactBaselineStatus(StrEnum):
+    NO_CURRENT = "NO_CURRENT"
+    CURRENT_BASELINE = "CURRENT_BASELINE"
+
+
 class AuditAction(StrEnum):
     PRICE_LIST_VERSION_APPROVED = "PRICE_LIST_VERSION_APPROVED"
     PRICE_LIST_VERSION_REJECTED = "PRICE_LIST_VERSION_REJECTED"

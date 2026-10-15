@@ -14,6 +14,7 @@ import { supplierKeys } from "@/services/suppliers";
 import {
   approvePriceListVersionApi,
   createPriceListVersionApi,
+  getCurrentPriceImpactApi,
   getCurrentPriceListVersionApi,
   getImportChangeReportApi,
   getPriceListVersionApi,
@@ -29,6 +30,8 @@ import type {
   AuditPagination,
   ChangeReportFilters,
   CreatePriceListVersionInput,
+  CurrentPriceImpact,
+  CurrentPriceImpactFilters,
   CurrentPriceListVersionResponse,
   ImportChangeReport,
   PriceListAuditEventList,
@@ -82,6 +85,16 @@ export const priceListVersionKeys = {
     [
       ...priceListVersionKeys.detail(supplierId, versionId),
       "changes",
+      filters,
+    ] as const,
+  currentImpact: (
+    supplierId: string,
+    versionId: string,
+    filters: CurrentPriceImpactFilters,
+  ) =>
+    [
+      ...priceListVersionKeys.detail(supplierId, versionId),
+      "current-impact",
       filters,
     ] as const,
   current: (supplierId: string) =>
@@ -168,6 +181,25 @@ export function usePriceListVersionChangesQuery(
     queryFn: ({ signal }) =>
       getPriceListVersionChangesApi(supplierId, versionId, filters, signal),
     retry: retryRead,
+  });
+}
+
+export function useCurrentPriceImpactQuery(
+  supplierId: string,
+  versionId: string,
+  filters: CurrentPriceImpactFilters,
+  enabled = true,
+) {
+  return useQuery<CurrentPriceImpact, ApiRequestError>({
+    queryKey: priceListVersionKeys.currentImpact(
+      supplierId,
+      versionId,
+      filters,
+    ),
+    queryFn: ({ signal }) =>
+      getCurrentPriceImpactApi(supplierId, versionId, filters, signal),
+    retry: retryRead,
+    enabled,
   });
 }
 

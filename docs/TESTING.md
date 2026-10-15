@@ -241,3 +241,23 @@ read-only، current empty/error و Audit empty/error را تست می‌کند.
 
 نتیجه نهایی suite کامل، lint/typecheck/build و migration verification در
 [SPRINT5_REPORT_FA.md](SPRINT5_REPORT_FA.md) ثبت می‌شود.
+
+## پوشش قابلیت اثر بر قیمت جاری — 2026-10-14
+
+Backend unit، وضعیت `NO_CURRENT`، baseline تأییدشده، multi-label، summary مستقل
+از فیلتر، pin ناسازگار، Target terminal و ترکیب pin نامعتبر را پوشش می‌دهد.
+Integration با PostgreSQL واقعی سناریوی V1 current، V2 rejected و V3 ready را
+می‌سازد و تفاوت V3→V2 تاریخی با V3→V1 جاری، pagination/filter، leading zero،
+tenant isolation، خطاهای 404/409/422، read بدون mutation و payload Approval را
+بررسی می‌کند. تست synchronization بدون sleep، تغییر pointer را وسط read متوقف و
+ثابت می‌کند transaction `REPEATABLE READ` state دو لحظه را ترکیب نمی‌کند.
+
+Frontend قرارداد Zod، query path و pin، AbortSignal، query keyهای scoped، invalidation
+پس از تصمیم، نبود retry mutation و رابط دو گزارش را تست می‌کند. component tests
+اثبات می‌کنند Approval از baseline گزارش استفاده می‌کند، `NO_CURRENT` مقدار null
+می‌فرستد، فیلترها مستقل‌اند، خطای 409 confirmation را پاک می‌کند و non-latest،
+Supplier غیرفعال، OPERATOR و Target terminal کنترل تصمیم را دور نمی‌زنند.
+
+سه fixture در `fixtures/demo/current-price-impact/` با parser واقعی خوانده و
+V1→V3 و V2→V3 به‌صورت regression عددی آزمون می‌شوند. fixtureهای baseline قبلی
+بدون تغییر و با assertionهای اصلی خود باقی مانده‌اند.

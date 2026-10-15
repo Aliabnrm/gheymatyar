@@ -84,6 +84,29 @@ describe("price-list version hooks", () => {
     expect(priceListVersionKeys.detail("supplier-a", "version-a")).not.toEqual(
       priceListVersionKeys.detail("supplier-b", "version-a"),
     );
+    expect(
+      priceListVersionKeys.currentImpact("supplier-a", "version-a", {
+        baselineVersionId: PREVIOUS_VERSION_ID,
+        expectNoCurrent: false,
+        changeType: "PRICE_CHANGED",
+        limit: 50,
+        offset: 0,
+      }),
+    ).toEqual([
+      "price-list-versions",
+      "supplier",
+      "supplier-a",
+      "detail",
+      "version-a",
+      "current-impact",
+      {
+        baselineVersionId: PREVIOUS_VERSION_ID,
+        expectNoCurrent: false,
+        changeType: "PRICE_CHANGED",
+        limit: 50,
+        offset: 0,
+      },
+    ]);
   });
 
   it("does not retry creation and invalidates only the affected supplier", async () => {
@@ -181,12 +204,24 @@ describe("price-list version hooks", () => {
         limit: 20,
         offset: 0,
       });
+      const impactKey = priceListVersionKeys.currentImpact(
+        supplierId,
+        versionId,
+        {
+          baselineVersionId: PREVIOUS_VERSION_ID,
+          expectNoCurrent: false,
+          changeType: null,
+          limit: 50,
+          offset: 0,
+        },
+      );
       const supplierKey = supplierKeys.detail(supplierId);
       for (const key of [
         detailKey,
         listKey,
         currentKey,
         auditKey,
+        impactKey,
         supplierKey,
       ]) {
         client.setQueryData(key, {});
@@ -222,6 +257,7 @@ describe("price-list version hooks", () => {
         listKey,
         currentKey,
         auditKey,
+        impactKey,
         supplierKey,
       ]) {
         expect(client.getQueryState(key)?.isInvalidated).toBe(true);

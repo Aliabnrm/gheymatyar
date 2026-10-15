@@ -273,3 +273,18 @@ Review، current pointer و Audit Event را اتمیک ذخیره می‌کند
 Audit append-only و صفحه‌بندی‌شده است. history/detail با join محدود Review و pointer
 را بدون N+1 برمی‌گردانند. Approval هیچ VersionItem را نمی‌خواند یا تغییر نمی‌دهد و
 برای تعیین current فایل XLSX دوباره parse نمی‌شود.
+
+## گزارش اثر بر Current (ADR 0011)
+
+Application use case با یک read port کوچک، Target، Review، latest eligibility،
+Supplier state، current pointer و Itemهای Target/Current را دریافت می‌کند. adapter
+SQLAlchemy این داده‌ها را در transaction کوتاه PostgreSQL با `REPEATABLE READ` و
+`READ ONLY` می‌خواند. comparison و serialization پس از پایان transaction روی
+snapshotهای immutable انجام می‌شوند؛ lock طولانی روی مسیر read وجود ندارد.
+
+منطق مقایسه همان `compare_price_lists` دامنه است و الگوریتم جدا در SQL یا React
+وجود ندارد. endpoint جدید baseline را با UUID یا نبود Current pin می‌کند. Frontend
+با query key شامل Supplier، Target، pin، filter و pagination صفحات را جدا نگه می‌دارد
+و payload Approval را از گزارش pin‌شده می‌سازد. CAS و lock مسیر write در ADR 0010
+بدون تغییر مرجع نهایی concurrency هستند. این طراحی جدول تازه‌ای لازم ندارد و
+migration جدیدی برای این قابلیت ایجاد نشده است.

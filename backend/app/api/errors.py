@@ -151,6 +151,7 @@ async def handle_price_list_approval_error(request: Request, exc: Exception) -> 
         PriceListApprovalErrorCode.REJECTION_NOT_CONFIRMED,
         PriceListApprovalErrorCode.REJECTION_REASON_REQUIRED,
         PriceListApprovalErrorCode.DECISION_NOTE_TOO_LONG,
+        PriceListApprovalErrorCode.CURRENT_PRICE_IMPACT_PIN_INVALID,
     }
     not_found_errors = {PriceListApprovalErrorCode.PRICE_LIST_VERSION_NOT_FOUND}
     if exc.code in validation_errors:

@@ -2,13 +2,17 @@ from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.accounts.infrastructure.orm import UserRecord
 from app.modules.suppliers.infrastructure.orm import SupplierRecord
 
-from ..application.approval_dto import ApprovalResult, AuditEventPage
+from ..application.approval_dto import (
+    ApprovalResult,
+    AuditEventPage,
+    CurrentPriceImpactSnapshot,
+)
 from ..domain.approval_errors import PriceListApprovalError, PriceListApprovalErrorCode
 from ..domain.approval_models import (
     AuditAction,
@@ -19,13 +23,199 @@ from ..domain.approval_models import (
     reject_version_review,
 )
 from ..domain.import_models import ImportStatus
+from ..domain.models import Availability
+from ..domain.version_models import PriceListVersion, VersionedPriceListItem, VersionLineage
 from .approval_orm import (
     AuditLogRecord,
     CurrentPriceListVersionRecord,
     PriceListVersionReviewRecord,
 )
 from .import_orm import ImportRunRecord
-from .version_orm import PriceListVersionRecord
+from .version_orm import PriceListVersionItemRecord, PriceListVersionRecord
+
+
+class SqlAlchemyCurrentPriceImpactReader:
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._session_factory = session_factory
+
+    async def read_snapshot(
+        self, *, organization_id: UUID, supplier_id: UUID, version_id: UUID
+    ) -> CurrentPriceImpactSnapshot | None:
+        async with self._session_factory() as database, database.begin():
+            await database.execute(
+                text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+            )
+            supplier = await database.scalar(
+                select(SupplierRecord).where(
+                    SupplierRecord.organization_id == organization_id,
+                    SupplierRecord.id == supplier_id,
+                )
+            )
+            if supplier is None:
+                return None
+            target_row = (
+                await database.execute(
+                    _version_query().where(
+                        PriceListVersionRecord.organization_id == organization_id,
+                        PriceListVersionRecord.supplier_id == supplier_id,
+                        PriceListVersionRecord.id == version_id,
+                    )
+                )
+            ).one_or_none()
+            if target_row is None:
+                return None
+            target = _to_version(*target_row)
+            latest_id = await database.scalar(
+                select(PriceListVersionRecord.id)
+                .where(
+                    PriceListVersionRecord.organization_id == organization_id,
+                    PriceListVersionRecord.supplier_id == supplier_id,
+                )
+                .order_by(PriceListVersionRecord.version_number.desc())
+                .limit(1)
+            )
+            current_id = await database.scalar(
+                select(CurrentPriceListVersionRecord.version_id).where(
+                    CurrentPriceListVersionRecord.organization_id == organization_id,
+                    CurrentPriceListVersionRecord.supplier_id == supplier_id,
+                )
+            )
+            target_items = await self._items(
+                database,
+                organization_id=organization_id,
+                supplier_id=supplier_id,
+                version_id=version_id,
+            )
+            baseline: PriceListVersion | None = None
+            baseline_items: tuple[VersionedPriceListItem, ...] | None = None
+            if current_id is not None:
+                baseline_row = (
+                    await database.execute(
+                        _version_query().where(
+                            PriceListVersionRecord.organization_id == organization_id,
+                            PriceListVersionRecord.supplier_id == supplier_id,
+                            PriceListVersionRecord.id == current_id,
+                        )
+                    )
+                ).one_or_none()
+                if baseline_row is not None:
+                    baseline = _to_version(*baseline_row)
+                    baseline_items = await self._items(
+                        database,
+                        organization_id=organization_id,
+                        supplier_id=supplier_id,
+                        version_id=current_id,
+                    )
+            return CurrentPriceImpactSnapshot(
+                target_version=target,
+                target_items=target_items,
+                current_version_id=current_id,
+                baseline_version=baseline,
+                baseline_items=baseline_items,
+                is_latest=latest_id == version_id,
+                supplier_is_active=supplier.is_active,
+            )
+
+    @staticmethod
+    async def _items(
+        database: AsyncSession,
+        *,
+        organization_id: UUID,
+        supplier_id: UUID,
+        version_id: UUID,
+    ) -> tuple[VersionedPriceListItem, ...]:
+        records = await database.scalars(
+            select(PriceListVersionItemRecord)
+            .where(
+                PriceListVersionItemRecord.organization_id == organization_id,
+                PriceListVersionItemRecord.supplier_id == supplier_id,
+                PriceListVersionItemRecord.version_id == version_id,
+            )
+            .order_by(
+                PriceListVersionItemRecord.product_code_normalized,
+                PriceListVersionItemRecord.id,
+            )
+        )
+        return tuple(_to_version_item(record) for record in records.all())
+
+
+def _version_query() -> Select[
+    tuple[PriceListVersionRecord, str, PriceListVersionReviewRecord, UUID]
+]:
+    return (
+        select(
+            PriceListVersionRecord,
+            UserRecord.email,
+            PriceListVersionReviewRecord,
+            CurrentPriceListVersionRecord.version_id,
+        )
+        .join(UserRecord, UserRecord.id == PriceListVersionRecord.created_by_user_id)
+        .join(
+            PriceListVersionReviewRecord,
+            and_(
+                PriceListVersionReviewRecord.organization_id
+                == PriceListVersionRecord.organization_id,
+                PriceListVersionReviewRecord.supplier_id == PriceListVersionRecord.supplier_id,
+                PriceListVersionReviewRecord.version_id == PriceListVersionRecord.id,
+            ),
+        )
+        .outerjoin(
+            CurrentPriceListVersionRecord,
+            and_(
+                CurrentPriceListVersionRecord.organization_id
+                == PriceListVersionRecord.organization_id,
+                CurrentPriceListVersionRecord.supplier_id == PriceListVersionRecord.supplier_id,
+                CurrentPriceListVersionRecord.version_id == PriceListVersionRecord.id,
+            ),
+        )
+    )
+
+
+def _to_version(
+    record: PriceListVersionRecord,
+    creator_email: str,
+    review: PriceListVersionReviewRecord,
+    current_version_id: UUID | None,
+) -> PriceListVersion:
+    return PriceListVersion(
+        id=record.id,
+        organization_id=record.organization_id,
+        supplier_id=record.supplier_id,
+        source_import_id=record.source_import_id,
+        created_by_user_id=record.created_by_user_id,
+        created_by_email=creator_email,
+        lineage=VersionLineage(record.version_number, record.previous_version_id),
+        row_count=record.row_count,
+        created_at=record.created_at,
+        review_status=ReviewStatus(review.status),
+        decided_by_user_id=review.decided_by_user_id,
+        decided_by_email=review.decided_by_email,
+        decided_at=review.decided_at,
+        decision_note=review.decision_note,
+        is_current=current_version_id == record.id,
+    )
+
+
+def _to_version_item(record: PriceListVersionItemRecord) -> VersionedPriceListItem:
+    return VersionedPriceListItem(
+        id=record.id,
+        organization_id=record.organization_id,
+        supplier_id=record.supplier_id,
+        version_id=record.version_id,
+        source_row_number=record.source_row_number,
+        product_code_raw=record.product_code_raw,
+        product_code_normalized=record.product_code_normalized,
+        product_name_raw=record.product_name_raw,
+        product_name_normalized=record.product_name_normalized,
+        brand=record.brand,
+        unit=record.unit,
+        pack_size=record.pack_size,
+        price_irr=record.price_irr,
+        availability=Availability(record.availability),
+        availability_raw=record.availability_raw,
+        notes=record.notes,
+        created_at=record.created_at,
+    )
 
 
 class SqlAlchemyPriceListApprovalStore:

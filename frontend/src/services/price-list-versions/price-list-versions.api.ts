@@ -6,6 +6,8 @@ import {
   AuditPaginationSchema,
   ChangeReportFiltersSchema,
   CreatePriceListVersionInputSchema,
+  CurrentPriceImpactFiltersSchema,
+  CurrentPriceImpactSchema,
   CurrentPriceListVersionResponseSchema,
   ImportChangeReportSchema,
   PriceListAuditEventListSchema,
@@ -21,6 +23,8 @@ import {
   type AuditPagination,
   type ChangeReportFilters,
   type CreatePriceListVersionInput,
+  type CurrentPriceImpact,
+  type CurrentPriceImpactFilters,
   type CurrentPriceListVersionResponse,
   type ImportChangeReport,
   type PriceListVersion,
@@ -44,6 +48,20 @@ function changeQuery(filters: ChangeReportFilters): string {
     offset: String(parsed.offset),
   });
   if (parsed.changeType) query.set("change_type", parsed.changeType);
+  return query.toString();
+}
+
+function currentImpactQuery(filters: CurrentPriceImpactFilters): string {
+  const parsed = CurrentPriceImpactFiltersSchema.parse(filters);
+  const query = new URLSearchParams({
+    limit: String(parsed.limit),
+    offset: String(parsed.offset),
+  });
+  if (parsed.changeType) query.set("change_type", parsed.changeType);
+  if (parsed.baselineVersionId) {
+    query.set("baseline_version_id", parsed.baselineVersionId);
+  }
+  if (parsed.expectNoCurrent) query.set("expect_no_current", "true");
   return query.toString();
 }
 
@@ -136,6 +154,19 @@ export function getPriceListVersionChangesApi(
     path: `${supplierPath(supplierId)}/price-list-versions/${encodeURIComponent(versionId)}/changes?${changeQuery(filters)}`,
     signal,
     responseSchema: VersionChangeReportSchema,
+  });
+}
+
+export function getCurrentPriceImpactApi(
+  supplierId: string,
+  versionId: string,
+  filters: CurrentPriceImpactFilters,
+  signal?: AbortSignal,
+): Promise<CurrentPriceImpact> {
+  return apiRequest({
+    path: `${supplierPath(supplierId)}/price-list-versions/${encodeURIComponent(versionId)}/current-impact?${currentImpactQuery(filters)}`,
+    signal,
+    responseSchema: CurrentPriceImpactSchema,
   });
 }
 

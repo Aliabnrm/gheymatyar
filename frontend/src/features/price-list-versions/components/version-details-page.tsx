@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ChangeType } from "@/services/price-list-comparison/price-list-comparison.schema";
 import { useCurrentAccountQuery } from "@/services/auth";
 import {
+  type CurrentPriceImpact,
+  useCurrentPriceImpactQuery,
   usePriceListVersionChangesQuery,
   usePriceListVersionQuery,
 } from "@/services/price-list-versions";
@@ -29,7 +31,59 @@ import { REVIEW_STATUS_DESCRIPTIONS } from "../model/approval-labels";
 import { CHANGE_FILTERS } from "../model/change-type-labels";
 import { formatVersionDate } from "../model/version-formatters";
 
+interface ImpactPin {
+  baselineVersionId: string | null;
+  expectNoCurrent: boolean;
+}
+
+const UNPINNED_IMPACT: ImpactPin = {
+  baselineVersionId: null,
+  expectNoCurrent: false,
+};
+
+function pinForReport(report: CurrentPriceImpact): ImpactPin {
+  return report.baselineStatus === "NO_CURRENT"
+    ? { baselineVersionId: null, expectNoCurrent: true }
+    : {
+        baselineVersionId: report.baselineVersion?.id ?? null,
+        expectNoCurrent: false,
+      };
+}
+
+function reportMatchesPin(report: CurrentPriceImpact, pin: ImpactPin): boolean {
+  if (report.baselineStatus === "NO_CURRENT") return pin.expectNoCurrent;
+  return (
+    !pin.expectNoCurrent && pin.baselineVersionId === report.baselineVersion?.id
+  );
+}
+
+function approvalContextFor(report: CurrentPriceImpact) {
+  const baselineId = report.baselineVersion?.id ?? null;
+  return {
+    key: `${report.targetVersion.id}:${report.baselineStatus}:${baselineId ?? "none"}`,
+    expectedCurrentVersionId: baselineId,
+    isLatest: report.isLatest,
+    supplierIsActive: report.supplierIsActive,
+  };
+}
+
 export function VersionDetailsPage({
+  supplierId,
+  versionId,
+}: {
+  supplierId: string;
+  versionId: string;
+}) {
+  return (
+    <VersionDetailsContent
+      key={`${supplierId}:${versionId}`}
+      supplierId={supplierId}
+      versionId={versionId}
+    />
+  );
+}
+
+function VersionDetailsContent({
   supplierId,
   versionId,
 }: {
@@ -38,7 +92,12 @@ export function VersionDetailsPage({
 }) {
   const [changeType, setChangeType] = useState<ChangeType | null>(null);
   const [changeOffset, setChangeOffset] = useState(0);
+  const [impactChangeType, setImpactChangeType] = useState<ChangeType | null>(
+    null,
+  );
+  const [impactOffset, setImpactOffset] = useState(0);
   const changeLimit = 50;
+  const impactLimit = 50;
   const account = useCurrentAccountQuery();
   const version = usePriceListVersionQuery(supplierId, versionId);
   const changes = usePriceListVersionChangesQuery(supplierId, versionId, {
@@ -46,10 +105,66 @@ export function VersionDetailsPage({
     limit: changeLimit,
     offset: changeOffset,
   });
+  const initialImpact = useCurrentPriceImpactQuery(
+    supplierId,
+    versionId,
+    {
+      ...UNPINNED_IMPACT,
+      changeType: null,
+      limit: 1,
+      offset: 0,
+    },
+    version.data?.reviewStatus === "READY_FOR_REVIEW",
+  );
+  const impactPin = initialImpact.data
+    ? pinForReport(initialImpact.data)
+    : UNPINNED_IMPACT;
+  const hasResolvedPin = initialImpact.data !== undefined;
+  const baselineImpact = useCurrentPriceImpactQuery(
+    supplierId,
+    versionId,
+    {
+      ...impactPin,
+      changeType: null,
+      limit: 1,
+      offset: 0,
+    },
+    version.data?.reviewStatus === "READY_FOR_REVIEW" && hasResolvedPin,
+  );
+  const impact = useCurrentPriceImpactQuery(
+    supplierId,
+    versionId,
+    {
+      ...impactPin,
+      changeType: impactChangeType,
+      limit: impactLimit,
+      offset: impactOffset,
+    },
+    version.data?.reviewStatus === "READY_FOR_REVIEW" && hasResolvedPin,
+  );
+  const approvalContext =
+    baselineImpact.data && reportMatchesPin(baselineImpact.data, impactPin)
+      ? approvalContextFor(baselineImpact.data)
+      : null;
+  const impactError =
+    initialImpact.error ?? baselineImpact.error ?? impact.error;
+  const impactIsPending =
+    initialImpact.isPending ||
+    (hasResolvedPin && (baselineImpact.isPending || impact.isPending));
 
   function selectChangeType(next: ChangeType | null): void {
     setChangeType(next);
     setChangeOffset(0);
+  }
+
+  function selectImpactChangeType(next: ChangeType | null): void {
+    setImpactChangeType(next);
+    setImpactOffset(0);
+  }
+
+  function restartImpactReview(): void {
+    setImpactOffset(0);
+    void initialImpact.refetch();
   }
 
   if (version.isPending) {
@@ -161,7 +276,7 @@ export function VersionDetailsPage({
       </Card>
       <section className="grid gap-4" aria-labelledby="version-changes-title">
         <h2 id="version-changes-title" className="text-xl font-semibold">
-          تغییرات نسبت به نسخه قبلی
+          تغییرات نسبت به نسخه قبلی ثبت‌شده
         </h2>
         {changes.isPending ? <Skeleton className="h-40 w-full" /> : null}
         {changes.isError ? (
@@ -176,6 +291,12 @@ export function VersionDetailsPage({
         ) : null}
         {changes.data?.summary ? (
           <>
+            <p className="text-sm text-muted-foreground">
+              مبنای تاریخی: نسخه{" "}
+              {formatInteger(changes.data.baselineVersion!.versionNumber)}؛ نسخه
+              هدف: {formatInteger(data.versionNumber)}. این مبنا حتی اگر نسخه
+              قبلی رد شده باشد، برای حفظ تاریخچه تغییر نمی‌کند.
+            </p>
             <ChangeSummaryCards summary={changes.data.summary} />
             <div
               className="flex flex-wrap gap-2"
@@ -223,18 +344,124 @@ export function VersionDetailsPage({
           </>
         ) : null}
       </section>
-      <section className="grid gap-4" aria-labelledby="version-items-title">
-        <h2 id="version-items-title" className="text-xl font-semibold">
-          کالاهای این نسخه
+      <section className="grid gap-4" aria-labelledby="current-impact-title">
+        <h2 id="current-impact-title" className="text-xl font-semibold">
+          اثر این نسخه بر قیمت جاری
         </h2>
-        <VersionItemsTable supplierId={supplierId} versionId={versionId} />
+        {data.reviewStatus !== "READY_FOR_REVIEW" ? (
+          <p className="rounded-lg border p-6 text-sm text-muted-foreground">
+            این گزارش زنده فقط تا پیش از تصمیم نهایی نسخه نمایش داده می‌شود.
+            سابقه تصمیم در بخش رویدادهای ممیزی باقی می‌ماند.
+          </p>
+        ) : null}
+        {data.reviewStatus === "READY_FOR_REVIEW" && impactIsPending ? (
+          <Skeleton className="h-40 w-full" role="status" />
+        ) : null}
+        {data.reviewStatus === "READY_FOR_REVIEW" && impactError ? (
+          <Alert variant="destructive" role="alert">
+            <AlertDescription className="grid gap-3">
+              <span>
+                {impactError.status === 409
+                  ? "قیمت جاری یا وضعیت نسخه تغییر کرده است. گزارش تازه را دوباره دریافت و بررسی کنید."
+                  : impactError.message}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-fit"
+                onClick={restartImpactReview}
+              >
+                <RefreshCw aria-hidden="true" /> دریافت گزارش تازه
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {impact.data?.baselineStatus === "NO_CURRENT" ? (
+          <Alert role="status">
+            <AlertDescription>
+              هنوز قیمت جاری تأییدشده‌ای وجود ندارد؛ این نسخه در صورت تأیید،
+              اولین قیمت جاری خواهد شد. نسخه هدف: نسخه{" "}
+              {formatInteger(impact.data.targetVersion.versionNumber)}.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {impact.data?.baselineStatus === "CURRENT_BASELINE" &&
+        impact.data.summary ? (
+          <>
+            <p className="text-sm text-muted-foreground">
+              مبنای عملیاتی: قیمت جاری نسخه{" "}
+              {formatInteger(impact.data.baselineVersion!.versionNumber)}؛ نسخه
+              هدف: {formatInteger(impact.data.targetVersion.versionNumber)}. این
+              گزارش نشان می‌دهد تأیید نسخه هدف چه اثری بر قیمت جاری دارد.
+            </p>
+            {changes.data?.baselineVersion?.id ===
+            impact.data.baselineVersion?.id ? (
+              <p className="text-sm text-muted-foreground">
+                شماره مبنای دو گزارش برابر است، اما گزارش تاریخی و گزارش اثر بر
+                قیمت جاری همچنان دو معنای متفاوت دارند.
+              </p>
+            ) : null}
+            <ChangeSummaryCards summary={impact.data.summary} />
+            <div
+              className="flex flex-wrap gap-2"
+              aria-label="فیلتر اثر بر قیمت جاری"
+            >
+              {CHANGE_FILTERS.map((filter) => (
+                <Button
+                  key={filter.value ?? "all"}
+                  type="button"
+                  size="sm"
+                  variant={
+                    impactChangeType === filter.value ? "secondary" : "outline"
+                  }
+                  aria-pressed={impactChangeType === filter.value}
+                  onClick={() => selectImpactChangeType(filter.value)}
+                >
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+            <PriceListChangeTable items={impact.data.items} />
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={impactOffset === 0}
+                onClick={() =>
+                  setImpactOffset(Math.max(0, impactOffset - impactLimit))
+                }
+              >
+                صفحه قبل
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {formatInteger(impact.data.total)} تغییر
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={impactOffset + impactLimit >= impact.data.total}
+                onClick={() => setImpactOffset(impactOffset + impactLimit)}
+              >
+                صفحه بعد
+              </Button>
+            </div>
+          </>
+        ) : null}
       </section>
       <VersionApprovalPanel
         supplierId={supplierId}
         versionId={versionId}
         reviewStatus={data.reviewStatus}
         isOwner={account.data?.membership.role === "OWNER"}
+        approvalContext={approvalContext}
+        onApprovalConflict={restartImpactReview}
       />
+      <section className="grid gap-4" aria-labelledby="version-items-title">
+        <h2 id="version-items-title" className="text-xl font-semibold">
+          کالاهای این نسخه
+        </h2>
+        <VersionItemsTable supplierId={supplierId} versionId={versionId} />
+      </section>
       <VersionAuditTimeline supplierId={supplierId} versionId={versionId} />
     </main>
   );

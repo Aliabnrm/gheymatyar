@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { VersionApprovalPanel } from "@/features/price-list-versions";
+import { ApiRequestError } from "@/core/api/api-error";
 
 import { IMPORT_API_FIXTURE } from "../../../fixtures/price-list-imports";
 import {
@@ -13,7 +14,7 @@ import {
 const mocks = vi.hoisted(() => ({
   approve: {} as Record<string, unknown>,
   approveAsync: vi.fn(),
-  current: {} as Record<string, unknown>,
+  conflict: vi.fn(),
   reject: {} as Record<string, unknown>,
   rejectAsync: vi.fn(),
 }));
@@ -24,19 +25,14 @@ vi.mock("@/services/price-list-versions", async (importOriginal) => {
   return {
     ...original,
     useApprovePriceListVersionMutation: () => mocks.approve,
-    useCurrentPriceListVersionQuery: () => mocks.current,
     useRejectPriceListVersionMutation: () => mocks.reject,
   };
 });
 
 beforeEach(() => {
   mocks.approveAsync.mockReset();
+  mocks.conflict.mockReset();
   mocks.rejectAsync.mockReset();
-  mocks.current = {
-    isPending: false,
-    isError: false,
-    data: { currentVersion: { id: PREVIOUS_VERSION_ID } },
-  };
   mocks.approve = {
     isPending: false,
     error: null,
@@ -54,6 +50,17 @@ beforeEach(() => {
 function renderPanel(
   isOwner = true,
   reviewStatus = "READY_FOR_REVIEW" as const,
+  approvalContext: {
+    key: string;
+    expectedCurrentVersionId: string | null;
+    isLatest: boolean;
+    supplierIsActive: boolean;
+  } | null = {
+    key: `current:${PREVIOUS_VERSION_ID}`,
+    expectedCurrentVersionId: PREVIOUS_VERSION_ID,
+    isLatest: true,
+    supplierIsActive: true,
+  },
 ) {
   return render(
     <VersionApprovalPanel
@@ -61,6 +68,8 @@ function renderPanel(
       versionId={VERSION_ID}
       reviewStatus={reviewStatus}
       isOwner={isOwner}
+      approvalContext={approvalContext}
+      onApprovalConflict={mocks.conflict}
     />,
   );
 }
@@ -152,6 +161,8 @@ describe("VersionApprovalPanel", () => {
         versionId={VERSION_ID}
         reviewStatus="APPROVED"
         isOwner
+        approvalContext={null}
+        onApprovalConflict={mocks.conflict}
       />,
     );
     expect(screen.getByText(/تصمیم این نسخه نهایی است/)).toBeInTheDocument();
@@ -181,10 +192,78 @@ describe("VersionApprovalPanel", () => {
         versionId={VERSION_ID}
         reviewStatus="READY_FOR_REVIEW"
         isOwner
+        approvalContext={{
+          key: `current:${PREVIOUS_VERSION_ID}`,
+          expectedCurrentVersionId: PREVIOUS_VERSION_ID,
+          isLatest: true,
+          supplierIsActive: true,
+        }}
+        onApprovalConflict={mocks.conflict}
       />,
     );
     expect(screen.getByRole("alert", { name: "" })).toHaveTextContent(
       "اطلاعات تازه دریافت شد",
     );
+  });
+
+  it("blocks approval without a pinned report but keeps rejection available", async () => {
+    renderPanel(true, "READY_FOR_REVIEW", null);
+    expect(
+      screen.getByText(/گزارش اثر بر قیمت جاری باید با مبنای ثابت/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "رد نسخه" })).toBeEnabled();
+  });
+
+  it("blocks approval for a non-latest version or inactive supplier", () => {
+    const view = renderPanel(true, "READY_FOR_REVIEW", {
+      key: `current:${PREVIOUS_VERSION_ID}`,
+      expectedCurrentVersionId: PREVIOUS_VERSION_ID,
+      isLatest: false,
+      supplierIsActive: true,
+    });
+    expect(screen.getByText(/جدیدترین نسخه ثبت‌شده نیست/)).toBeInTheDocument();
+
+    view.rerender(
+      <VersionApprovalPanel
+        supplierId={IMPORT_API_FIXTURE.supplier.id}
+        versionId={VERSION_ID}
+        reviewStatus="READY_FOR_REVIEW"
+        isOwner
+        approvalContext={{
+          key: `current:${PREVIOUS_VERSION_ID}`,
+          expectedCurrentVersionId: PREVIOUS_VERSION_ID,
+          isLatest: true,
+          supplierIsActive: false,
+        }}
+        onApprovalConflict={mocks.conflict}
+      />,
+    );
+    expect(screen.getByText(/تأمین‌کننده غیرفعال است/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "رد نسخه" })).toBeEnabled();
+  });
+
+  it("clears confirmation and refreshes the report after an approval conflict", async () => {
+    mocks.approveAsync.mockRejectedValue(
+      new ApiRequestError("تعارض", {
+        code: "CURRENT_PRICE_VERSION_CHANGED",
+        status: 409,
+      }),
+    );
+    renderPanel();
+    const user = userEvent.setup();
+    const confirmation = screen.getByRole("checkbox", {
+      name: /تغییرات نسخه را بررسی کردم/,
+    });
+    await user.click(confirmation);
+    await user.click(
+      screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }),
+    );
+
+    await waitFor(() => expect(mocks.conflict).toHaveBeenCalledOnce());
+    expect(confirmation).not.toBeChecked();
+    expect(mocks.approveAsync).toHaveBeenCalledOnce();
   });
 });

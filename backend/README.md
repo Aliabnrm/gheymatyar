@@ -149,3 +149,10 @@ migration `20260921_0010` Review، current pointer و Audit Log append-only را
 آخرین Version و Supplier فعال مجاز است و `expected_current_version_id` همراه lock
 دیتابیس از تصمیم stale و race جلوگیری می‌کند. تصمیم، pointer و Audit Event در یک
 transaction ذخیره می‌شوند.
+
+endpoint فقط‌خواندنی
+`GET /api/v1/suppliers/{supplier_id}/price-list-versions/{version_id}/current-impact`
+اثر Version آماده بررسی را بر current تأییدشده نشان می‌دهد. read port اختصاصی
+Target، pointer و Itemهای دو snapshot را در transaction کوتاه `REPEATABLE READ`
+و `READ ONLY` می‌خواند. baseline با UUID یا نبود Current pin می‌شود و Approval همان
+UUID مشاهده‌شده را به CAS موجود می‌فرستد. schema دیتابیس تغییر نکرده است.

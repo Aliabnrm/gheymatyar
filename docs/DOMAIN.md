@@ -201,6 +201,21 @@ SourceDocument یا ImportRun نمی‌سازند:
 - Version و Itemهای تاریخی در هیچ transition تغییر نمی‌کنند.
 - هر تصمیم actor، زمان، note و Audit Event append-only دارد.
 
+## اثر Version بر قیمت جاری
+
+- Historical baseline همان predecessor ذخیره‌شده Version است و برای گزارش
+  `/changes` تغییر نمی‌کند، حتی اگر predecessor ردشده باشد.
+- Current baseline فقط Version تأییدشده‌ای است که current pointer همان Supplier و
+  Organization به آن اشاره می‌کند؛ latest یا predecessor جایگزین آن نمی‌شوند.
+- گزارش زنده فقط برای Target دارای `READY_FOR_REVIEW` معتبر است. این گزارش snapshot
+  تاریخی زمان تصمیم نیست و برای Version terminal دوباره ساخته نمی‌شود.
+- نبود Current وضعیت `NO_CURRENT` است. در این حالت summary و items اثر جاری تهی‌اند؛
+  کالاهای Target به‌صورت added ساختگی گزارش نمی‌شوند.
+- Current موجود باید `APPROVED` باشد. ناسازگاری pointer با خطای پایدار متوقف می‌شود
+  و با fallback پنهان نمی‌شود.
+- baseline مشاهده‌شده برای pagination و Approval pin می‌شود. Approval همان UUID را
+  به CAS فعلی می‌دهد؛ تغییر Current نیازمند بازبینی و confirmation تازه است.
+
 Template نسخه‌دار و tenant/supplier-scoped است؛ فقط یک نسخه فعال دارد و ذخیره
 از DRAFT موفق با اقدام صریح کاربر انجام می‌شود. جایگزینی نیازمند تأیید و UUID
 نسخه فعال دیده‌شده است. actor، زمان و Import مرجع در هر نسخه حفظ می‌شود. تغییر

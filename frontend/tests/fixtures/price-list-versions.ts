@@ -149,3 +149,41 @@ export const FIRST_IMPORT_CHANGE_REPORT_API_FIXTURE = {
   limit: 50,
   offset: 0,
 } as const;
+
+export const CURRENT_PRICE_IMPACT_API_FIXTURE = {
+  target_version: {
+    id: VERSION_ID,
+    version_number: 3,
+    created_at: "2026-09-18T08:00:00Z",
+  },
+  baseline_status: "CURRENT_BASELINE",
+  baseline_version: {
+    id: PREVIOUS_VERSION_ID,
+    version_number: 1,
+    created_at: "2026-09-16T08:00:00Z",
+  },
+  is_latest: true,
+  supplier_is_active: true,
+  summary: IMPORT_CHANGE_REPORT_API_FIXTURE.summary,
+  items: IMPORT_CHANGE_REPORT_API_FIXTURE.items,
+  total: 1,
+  limit: 50,
+  offset: 0,
+} as const;
+
+export const NO_CURRENT_PRICE_IMPACT_API_FIXTURE = {
+  target_version: {
+    id: VERSION_ID,
+    version_number: 1,
+    created_at: "2026-09-18T08:00:00Z",
+  },
+  baseline_status: "NO_CURRENT",
+  baseline_version: null,
+  is_latest: true,
+  supplier_is_active: true,
+  summary: null,
+  items: [],
+  total: 0,
+  limit: 50,
+  offset: 0,
+} as const;

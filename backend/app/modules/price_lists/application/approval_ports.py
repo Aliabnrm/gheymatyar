@@ -1,7 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
-from .approval_dto import ApprovalResult, AuditEventPage
+from .approval_dto import ApprovalResult, AuditEventPage, CurrentPriceImpactSnapshot
 
 
 class PriceListApprovalStore(Protocol):
@@ -39,3 +39,9 @@ class PriceListApprovalStore(Protocol):
         limit: int,
         offset: int,
     ) -> AuditEventPage | None: ...
+
+
+class CurrentPriceImpactReader(Protocol):
+    async def read_snapshot(
+        self, *, organization_id: UUID, supplier_id: UUID, version_id: UUID
+    ) -> CurrentPriceImpactSnapshot | None: ...

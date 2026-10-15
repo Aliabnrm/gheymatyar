@@ -271,6 +271,75 @@ export const CurrentPriceListVersionResponseSchema = z
   .strict()
   .transform(({ current_version }) => ({ currentVersion: current_version }));
 
+export const CurrentPriceImpactBaselineStatusSchema = z.enum([
+  "NO_CURRENT",
+  "CURRENT_BASELINE",
+]);
+
+export const CurrentPriceImpactSchema = z
+  .object({
+    target_version: VersionBaselineSchema,
+    baseline_status: CurrentPriceImpactBaselineStatusSchema,
+    baseline_version: VersionBaselineSchema.nullable(),
+    is_latest: z.boolean(),
+    supplier_is_active: z.boolean(),
+    summary: ComparisonSummarySchema.nullable(),
+    items: z.array(ComparisonItemSchema),
+    total: z.number().int().nonnegative(),
+    limit: z.number().int().positive().max(100),
+    offset: z.number().int().nonnegative(),
+  })
+  .strict()
+  .superRefine((report, context) => {
+    const noCurrent = report.baseline_status === "NO_CURRENT";
+    if (noCurrent !== (report.baseline_version === null)) {
+      context.addIssue({
+        code: "custom",
+        message: "وضعیت مبنای قیمت جاری ناسازگار است.",
+        path: ["baseline_version"],
+      });
+    }
+    if (noCurrent && (report.summary !== null || report.items.length > 0)) {
+      context.addIssue({
+        code: "custom",
+        message: "گزارش بدون قیمت جاری نباید تغییر ساختگی داشته باشد.",
+        path: ["summary"],
+      });
+    }
+  })
+  .transform(
+    ({
+      target_version,
+      baseline_status,
+      baseline_version,
+      is_latest,
+      supplier_is_active,
+      ...report
+    }) => ({
+      ...report,
+      targetVersion: target_version,
+      baselineStatus: baseline_status,
+      baselineVersion: baseline_version,
+      isLatest: is_latest,
+      supplierIsActive: supplier_is_active,
+    }),
+  );
+
+export const CurrentPriceImpactFiltersSchema = ChangeReportFiltersSchema.extend(
+  {
+    baselineVersionId: z.uuid().nullable().default(null),
+    expectNoCurrent: z.boolean().default(false),
+  },
+).superRefine((filters, context) => {
+  if (filters.baselineVersionId && filters.expectNoCurrent) {
+    context.addIssue({
+      code: "custom",
+      message: "شناسه مبنا و انتظار نبود قیمت جاری هم‌زمان مجاز نیستند.",
+      path: ["expectNoCurrent"],
+    });
+  }
+});
+
 export const PriceListAuditEventSchema = z
   .object({
     id: z.uuid(),
@@ -337,6 +406,10 @@ export type RejectionInput = z.input<typeof RejectionInputSchema>;
 export type ApprovalResult = z.output<typeof ApprovalResultSchema>;
 export type CurrentPriceListVersionResponse = z.output<
   typeof CurrentPriceListVersionResponseSchema
+>;
+export type CurrentPriceImpact = z.output<typeof CurrentPriceImpactSchema>;
+export type CurrentPriceImpactFilters = z.input<
+  typeof CurrentPriceImpactFiltersSchema
 >;
 export type PriceListAuditEvent = z.output<typeof PriceListAuditEventSchema>;
 export type PriceListAuditEventList = z.output<

@@ -146,3 +146,11 @@ Reject قیمت جاری قبلی را تغییر نمی‌دهد. OPERATOR وض
 actor/time/note و Audit Timeline را نمایش می‌دهد. برای schemaهای Sprint 5 ابتدا
 `make backend-migrate` را اجرا کنید. جزئیات در ADR 0010 و
 `docs/SPRINT5_REPORT_FA.md` آمده است.
+
+نسخه آماده بررسی همچنین بخش «اثر این نسخه بر قیمت جاری» دارد. این گزارش مستقل از
+گزارش تاریخی predecessor است، baseline جاری را برای صفحه‌بندی pin می‌کند و همان
+baseline را به Approval می‌دهد. اگر قیمت جاری هم‌زمان تغییر کند، confirmation قبلی
+باطل و بازبینی دوباره لازم می‌شود. قرارداد در ADR 0011، Spec در
+`docs/specs/current-price-impact.md` و دموی V1/V2/V3 در
+`docs/demos/current-price-impact-demo-fa.md` مستند شده است. این قابلیت migration
+تازه‌ای ندارد.

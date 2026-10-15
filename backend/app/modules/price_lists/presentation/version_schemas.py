@@ -4,9 +4,18 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..application.approval_dto import ApprovalResult, AuditEventPage, CurrentPriceListVersionView
+from ..application.approval_dto import (
+    ApprovalResult,
+    AuditEventPage,
+    CurrentPriceImpactPage,
+    CurrentPriceListVersionView,
+)
 from ..application.version_dto import ChangeReportPage, PriceListVersionPage, VersionItemPage
-from ..domain.approval_models import AuditAction, ReviewStatus
+from ..domain.approval_models import (
+    AuditAction,
+    CurrentPriceImpactBaselineStatus,
+    ReviewStatus,
+)
 from ..domain.version_models import PriceListVersion, VersionedPriceListItem
 from .schemas import ComparisonSummaryResponse, ItemComparisonResponse
 
@@ -161,6 +170,95 @@ class CurrentPriceListVersionResponse(BaseModel):
                 if view.current_version
                 else None
             )
+        )
+
+
+class CurrentPriceImpactResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "target_version": {
+                        "id": "00000000-0000-4000-8000-000000000003",
+                        "version_number": 3,
+                        "created_at": "2026-10-14T08:00:00Z",
+                    },
+                    "baseline_status": "CURRENT_BASELINE",
+                    "baseline_version": {
+                        "id": "00000000-0000-4000-8000-000000000001",
+                        "version_number": 1,
+                        "created_at": "2026-10-12T08:00:00Z",
+                    },
+                    "is_latest": True,
+                    "supplier_is_active": True,
+                    "summary": {
+                        "old_items": 2,
+                        "new_items": 2,
+                        "added": 1,
+                        "removed": 1,
+                        "price_changed": 1,
+                        "price_increased": 1,
+                        "price_decreased": 0,
+                        "metadata_only_changed": 0,
+                        "unchanged": 0,
+                        "high_risk": 1,
+                    },
+                    "items": [],
+                    "total": 3,
+                    "limit": 50,
+                    "offset": 0,
+                },
+                {
+                    "target_version": {
+                        "id": "00000000-0000-4000-8000-000000000001",
+                        "version_number": 1,
+                        "created_at": "2026-10-12T08:00:00Z",
+                    },
+                    "baseline_status": "NO_CURRENT",
+                    "baseline_version": None,
+                    "is_latest": True,
+                    "supplier_is_active": True,
+                    "summary": None,
+                    "items": [],
+                    "total": 0,
+                    "limit": 50,
+                    "offset": 0,
+                },
+            ]
+        },
+    )
+
+    target_version: VersionBaselineResponse
+    baseline_status: CurrentPriceImpactBaselineStatus
+    baseline_version: VersionBaselineResponse | None
+    is_latest: bool
+    supplier_is_active: bool
+    summary: ComparisonSummaryResponse | None
+    items: list[ItemComparisonResponse]
+    total: int
+    limit: int
+    offset: int
+
+    @classmethod
+    def from_domain(cls, report: CurrentPriceImpactPage) -> Self:
+        return cls(
+            target_version=VersionBaselineResponse.from_domain(report.target_version),
+            baseline_status=report.baseline_status,
+            baseline_version=(
+                VersionBaselineResponse.from_domain(report.baseline_version)
+                if report.baseline_version
+                else None
+            ),
+            is_latest=report.is_latest,
+            supplier_is_active=report.supplier_is_active,
+            summary=(
+                ComparisonSummaryResponse.model_validate(report.summary) if report.summary else None
+            ),
+            items=[ItemComparisonResponse.from_domain(item) for item in report.items],
+            total=report.total,
+            limit=report.limit,
+            offset=report.offset,
         )
 
 

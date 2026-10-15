@@ -5,12 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ApiRequestError } from "@/core/api/api-error";
 import {
   RejectionInputSchema,
   type ReviewStatus,
   useApprovePriceListVersionMutation,
-  useCurrentPriceListVersionQuery,
   useRejectPriceListVersionMutation,
 } from "@/services/price-list-versions";
 
@@ -31,16 +30,26 @@ export function VersionApprovalPanel({
   versionId,
   reviewStatus,
   isOwner,
+  approvalContext,
+  onApprovalConflict,
 }: {
   supplierId: string;
   versionId: string;
   reviewStatus: ReviewStatus;
   isOwner: boolean;
+  approvalContext: {
+    key: string;
+    expectedCurrentVersionId: string | null;
+    isLatest: boolean;
+    supplierIsActive: boolean;
+  } | null;
+  onApprovalConflict: () => void;
 }) {
-  const current = useCurrentPriceListVersionQuery(supplierId);
   const approve = useApprovePriceListVersionMutation();
   const reject = useRejectPriceListVersionMutation();
-  const [approvalConfirmed, setApprovalConfirmed] = useState(false);
+  const [confirmedContextKey, setConfirmedContextKey] = useState<string | null>(
+    null,
+  );
   const [approvalNote, setApprovalNote] = useState("");
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionConfirmed, setRejectionConfirmed] = useState(false);
@@ -82,25 +91,21 @@ export function VersionApprovalPanel({
     );
   }
 
-  if (current.isPending) {
-    return <Skeleton className="h-56 w-full" role="status" />;
-  }
-
-  if (current.isError) {
-    return (
-      <Alert variant="destructive" role="alert">
-        <AlertDescription>
-          برای تصمیم‌گیری باید قیمت جاری دریافت شود. {current.error.message}
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
   const errorMessage = decisionError(approve.error ?? reject.error);
-  const expectedCurrentVersionId = current.data.currentVersion?.id ?? null;
+  const approvalBlockedMessage = !approvalContext
+    ? "برای تأیید، گزارش اثر بر قیمت جاری باید با مبنای ثابت دریافت و بررسی شود."
+    : !approvalContext.isLatest
+      ? "این نسخه جدیدترین نسخه ثبت‌شده نیست و امکان تأیید آن وجود ندارد."
+      : !approvalContext.supplierIsActive
+        ? "تأمین‌کننده غیرفعال است و این نسخه تا فعال‌شدن دوباره قابل تأیید نیست."
+        : null;
+  const canApprove = approvalBlockedMessage === null;
+  const approvalConfirmed =
+    approvalContext !== null && confirmedContextKey === approvalContext.key;
 
   async function approveVersion(): Promise<void> {
-    if (!approvalConfirmed || pending) return;
+    if (!approvalConfirmed || pending || !canApprove || !approvalContext)
+      return;
     setSuccessMessage(null);
     approve.reset();
     reject.reset();
@@ -109,13 +114,17 @@ export function VersionApprovalPanel({
         supplierId,
         versionId,
         input: {
-          expectedCurrentVersionId,
+          expectedCurrentVersionId: approvalContext.expectedCurrentVersionId,
           confirmApproval: true,
           decisionNote: approvalNote.trim() || null,
         },
       });
       setSuccessMessage("نسخه تأیید شد و به‌عنوان قیمت جاری انتخاب شد.");
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 409) {
+        setConfirmedContextKey(null);
+        onApprovalConflict();
+      }
       // Safe mutation error is rendered below.
     }
   }
@@ -160,12 +169,21 @@ export function VersionApprovalPanel({
             انتخاب می‌شوند. نسخه‌های تاریخی تغییر نمی‌کنند.
           </AlertDescription>
         </Alert>
+        {approvalBlockedMessage ? (
+          <Alert variant="destructive" role="alert">
+            <AlertDescription>{approvalBlockedMessage}</AlertDescription>
+          </Alert>
+        ) : null}
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
             checked={approvalConfirmed}
-            disabled={pending}
-            onChange={(event) => setApprovalConfirmed(event.target.checked)}
+            disabled={pending || !canApprove}
+            onChange={(event) =>
+              setConfirmedContextKey(
+                event.target.checked ? (approvalContext?.key ?? null) : null,
+              )
+            }
           />
           تغییرات نسخه را بررسی کردم و پیامد انتخاب آن به‌عنوان قیمت جاری را
           می‌پذیرم.
@@ -177,14 +195,14 @@ export function VersionApprovalPanel({
             className="min-h-20 rounded-md border bg-background px-3 py-2"
             value={approvalNote}
             maxLength={500}
-            disabled={pending}
+            disabled={pending || !canApprove}
             onChange={(event) => setApprovalNote(event.target.value)}
           />
         </label>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
-            disabled={!approvalConfirmed || pending}
+            disabled={!approvalConfirmed || pending || !canApprove}
             onClick={() => void approveVersion()}
           >
             {approve.isPending ? "در حال تأیید…" : "تأیید و انتخاب قیمت جاری"}

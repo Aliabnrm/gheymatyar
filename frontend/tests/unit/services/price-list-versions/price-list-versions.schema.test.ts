@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   ApprovalInputSchema,
+  CurrentPriceImpactFiltersSchema,
+  CurrentPriceImpactSchema,
   CurrentPriceListVersionResponseSchema,
   ImportChangeReportSchema,
   PriceListAuditEventListSchema,
@@ -14,9 +16,12 @@ import {
 import {
   APPROVED_VERSION_API_FIXTURE,
   AUDIT_EVENT_API_FIXTURE,
+  CURRENT_PRICE_IMPACT_API_FIXTURE,
   IMPORT_CHANGE_REPORT_API_FIXTURE,
+  PREVIOUS_VERSION_ID,
   VERSION_API_FIXTURE,
   VERSION_ITEM_API_FIXTURE,
+  NO_CURRENT_PRICE_IMPACT_API_FIXTURE,
 } from "../../../fixtures/price-list-versions";
 
 describe("price-list version schemas", () => {
@@ -92,5 +97,33 @@ describe("price-list version schemas", () => {
         reason: "  تعداد بسته اشتباه است  ",
       }).reason,
     ).toBe("تعداد بسته اشتباه است");
+  });
+
+  it("parses current-impact states and rejects inconsistent baseline contracts", () => {
+    const current = CurrentPriceImpactSchema.parse(
+      CURRENT_PRICE_IMPACT_API_FIXTURE,
+    );
+    const noCurrent = CurrentPriceImpactSchema.parse(
+      NO_CURRENT_PRICE_IMPACT_API_FIXTURE,
+    );
+    expect(current.baselineVersion?.id).toBe(PREVIOUS_VERSION_ID);
+    expect(current.targetVersion.id).toBe(VERSION_API_FIXTURE.id);
+    expect(noCurrent.baselineStatus).toBe("NO_CURRENT");
+    expect(noCurrent.summary).toBeNull();
+    expect(() =>
+      CurrentPriceImpactSchema.parse({
+        ...NO_CURRENT_PRICE_IMPACT_API_FIXTURE,
+        summary: IMPORT_CHANGE_REPORT_API_FIXTURE.summary,
+      }),
+    ).toThrow();
+    expect(() =>
+      CurrentPriceImpactFiltersSchema.parse({
+        baselineVersionId: PREVIOUS_VERSION_ID,
+        expectNoCurrent: true,
+        changeType: null,
+        limit: 50,
+        offset: 0,
+      }),
+    ).toThrow();
   });
 });

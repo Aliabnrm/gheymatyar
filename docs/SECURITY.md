@@ -243,3 +243,17 @@ dimension اعلامی worksheet مبنای کوتاه‌کردن extraction ن�
   رویداد تکراری باقی نمی‌گذارد.
 - Audit endpoint فقط GET است و details آن allowlist محدود شناسه/وضعیت/note دارد؛
   فایل، ردیف کامل، token، cookie و secret ذخیره یا log نمی‌شوند.
+
+## کنترل‌های گزارش اثر بر قیمت جاری
+
+- endpoint خواندنی فقط برای OWNER/OPERATOR دارای Session است و Organization را از
+  Session می‌گیرد. Supplier، Target، Current و Itemها همگی tenant-scoped هستند.
+- `baseline_version_id` فقط pin هم‌زمانی است، نه مدرک authorization. UUID خارج از
+  scope lookup جدا یا metadata قابل مشاهده تولید نمی‌کند.
+- target و baseline از VersionItemهای ذخیره‌شده خوانده می‌شوند؛ فایل untrusted
+  دوباره parse یا اجرا نمی‌شود و متن کالا در React به‌صورت متن escape می‌شود.
+- snapshot خواندن با transaction کوتاه read-only سازگار است. گزارش هیچ pointer،
+  Review، Version، Item یا Audit Eventی ایجاد یا تغییر نمی‌دهد.
+- تغییر Current پاسخ 409 می‌دهد، confirmation UI را پاک می‌کند و mutation Approval
+  خودکار retry نمی‌شود. Backend همچنان OWNER، CSRF، latest، Supplier فعال و CAS را
+  مستقل از UI کنترل می‌کند.

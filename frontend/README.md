@@ -180,3 +180,10 @@ service نسخه‌ها قراردادهای Review، Approval، Reject، Curren
 می‌کنند. صفحه Version badge وضعیت، metadata تصمیم، پنل OWNER و timeline ممیزی دارد؛
 OPERATOR حالت فقط‌خواندنی می‌بیند. صفحه Supplier نیز loading، empty، error و نسخه
 جاری را در یک کارت ساده نمایش می‌دهد.
+
+صفحه Version آماده بررسی، «تغییرات نسبت به نسخه قبلی ثبت‌شده» و «اثر این نسخه بر
+قیمت جاری» را با state، فیلتر و pagination مستقل نشان می‌دهد. query گزارش جاری
+شامل baseline pin است و Approval مقدار `expectedCurrentVersionId` را از همان گزارش
+می‌گیرد، نه از query مستقل Current. `NO_CURRENT` پیام اولین قیمت جاری دارد؛ 409،
+تعویض Target یا مبنا confirmation را باطل می‌کند. Reject مستقل از خرابی گزارش باقی
+می‌ماند.
