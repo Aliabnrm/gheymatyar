@@ -5,13 +5,7 @@ import Link from "next/link";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePriceListImportQuery } from "@/services/price-list-imports";
 import { ImportChangeReview } from "@/features/price-list-versions";
@@ -21,10 +15,7 @@ import { ColumnMappingPanel } from "./column-mapping-panel";
 import { BlockingImportError } from "./blocking-import-error";
 import { ExtractedRowsTable } from "./extracted-rows-table";
 import { ImportStatusBadge } from "./import-status-badge";
-import {
-  formatFileSize,
-  formatImportDateTime,
-} from "../model/import-formatters";
+import { formatFileSize, formatImportDateTime } from "../model/import-formatters";
 
 export function ImportDetailsPage({
   supplierId,
@@ -71,9 +62,7 @@ export function ImportDetailsPage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid min-w-0 gap-2">
           <p className="text-sm text-muted-foreground">{data.supplier.name}</p>
-          <h1 className="break-words text-2xl font-bold">
-            {data.sourceDocument.originalFilename}
-          </h1>
+          <h1 className="break-words text-2xl font-bold">{data.sourceDocument.originalFilename}</h1>
           <ImportStatusBadge status={data.status} />
         </div>
         <Button asChild variant="outline">
@@ -87,8 +76,7 @@ export function ImportDetailsPage({
         <CardHeader>
           <CardTitle>مشخصات فایل و Import</CardTitle>
           <CardDescription>
-            فایل اصلی نگهداری شده و این اطلاعات از metadata امن آن نمایش داده
-            می‌شود.
+            فایل اصلی نگهداری شده و این اطلاعات از metadata امن آن نمایش داده می‌شود.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -99,15 +87,11 @@ export function ImportDetailsPage({
             </div>
             <div>
               <dt className="text-muted-foreground">حجم فایل</dt>
-              <dd className="font-medium">
-                {formatFileSize(data.sourceDocument.sizeBytes)}
-              </dd>
+              <dd className="font-medium">{formatFileSize(data.sourceDocument.sizeBytes)}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">زمان بارگذاری</dt>
-              <dd className="font-medium">
-                {formatImportDateTime(data.createdAt)}
-              </dd>
+              <dd className="font-medium">{formatImportDateTime(data.createdAt)}</dd>
             </div>
             <div className="sm:col-span-2 lg:col-span-3">
               <dt className="text-muted-foreground">اثر انگشت SHA-256</dt>
@@ -141,10 +125,7 @@ export function ImportDetailsPage({
       {data.status === "DRAFT" ? (
         <>
           <ImportChangeReview supplierId={supplierId} importId={importId} />
-          <section
-            className="grid gap-4"
-            aria-labelledby="extracted-rows-title"
-          >
+          <section className="grid gap-4" aria-labelledby="extracted-rows-title">
             <div>
               <h2 id="extracted-rows-title" className="text-xl font-semibold">
                 ردیف‌های استخراج‌شده

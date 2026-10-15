@@ -39,9 +39,7 @@ export function FileSelector({
       <span className="file-card__hint" id={hintId}>
         {file ? formatFileSize(file.size) : hint}
       </span>
-      <span className="file-card__action">
-        {file ? "تغییر فایل" : "انتخاب فایل XLSX"}
-      </span>
+      <span className="file-card__action">{file ? "تغییر فایل" : "انتخاب فایل XLSX"}</span>
       <input
         id={id}
         className="visually-hidden"

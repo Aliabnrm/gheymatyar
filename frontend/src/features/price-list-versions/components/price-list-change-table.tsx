@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { PackUnitValue, ChangeFieldDetails } from "@/features/price-list-changes";
 import {
   Table,
   TableBody,
@@ -7,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ComparisonItem } from "@/services/price-list-comparison/price-list-comparison.schema";
+import type { ComparisonItem } from "@/services/price-list-shared/price-list-change.schema";
 import { formatIrr, formatPercent, formatPriceDelta } from "@/utils/format";
 
 import { CHANGE_TYPE_LABELS } from "../model/change-type-labels";
@@ -38,10 +39,7 @@ export function PriceListChangeTable({ items }: { items: ComparisonItem[] }) {
           const display = item.current ?? item.previous;
           if (!display) return null;
           return (
-            <TableRow
-              key={item.product_code}
-              className={item.is_high_risk ? "bg-amber-50" : ""}
-            >
+            <TableRow key={item.product_code} className={item.is_high_risk ? "bg-amber-50" : ""}>
               <TableCell className="min-w-48 whitespace-normal">
                 <strong className="block">{display.product_name_raw}</strong>
                 <span dir="ltr" className="text-xs text-muted-foreground">
@@ -63,27 +61,18 @@ export function PriceListChangeTable({ items }: { items: ComparisonItem[] }) {
                     </Badge>
                   ))}
                 </div>
+                <ChangeFieldDetails item={item} />
               </TableCell>
+              <TableCell>{formatIrr(item.previous?.price_irr ?? null)}</TableCell>
+              <TableCell>{formatIrr(item.current?.price_irr ?? null)}</TableCell>
               <TableCell>
-                {formatIrr(item.previous?.price_irr ?? null)}
-              </TableCell>
-              <TableCell>
-                {formatIrr(item.current?.price_irr ?? null)}
-              </TableCell>
-              <TableCell>
-                <span className="block">
-                  {formatPriceDelta(item.price_delta_irr)}
-                </span>
+                <span className="block">{formatPriceDelta(item.price_delta_irr)}</span>
                 <span className="text-xs text-muted-foreground">
                   {formatPercent(item.price_change_percent)}
                 </span>
               </TableCell>
               <TableCell>
-                {item.previous?.pack_size ?? "—"} {item.previous?.unit ?? ""}
-                {item.is_high_risk ? " ← " : ""}
-                {item.is_high_risk
-                  ? `${item.current?.pack_size ?? "—"} ${item.current?.unit ?? ""}`
-                  : ""}
+                <PackUnitValue item={item} />
               </TableCell>
             </TableRow>
           );

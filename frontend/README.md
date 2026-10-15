@@ -24,12 +24,14 @@ frontend/
 │   │   │   ├── model/                # route و labelهای type-safe
 │   │   │   └── index.ts              # public API قابلیت
 │   │   ├── price-list-comparison/    # قابلیت مقایسه XLSX
+│   │   ├── price-list-changes/       # نمایش مشترک تغییرات، بسته و اطلاعات کالا
 │   │   ├── price-list-imports/       # آپلود، تاریخچه و بازبینی Import Draft
 │   │   ├── price-list-versions/      # مقایسه Import، ثبت و تاریخچه نسخه‌ها
 │   │   └── suppliers/                # list/create/detail/update تأمین‌کننده
 │   ├── services/
 │   │   ├── auth/                     # schema، API و TanStack hooks
 │   │   ├── price-list-comparison/
+│   │   ├── price-list-shared/        # قراردادهای مشترک کالا و تغییرات
 │   │   ├── price-list-imports/       # schema، API و TanStack hooks مربوط به Import
 │   │   ├── price-list-versions/      # schema، API و query/mutationهای نسخه
 │   │   └── suppliers/
@@ -47,6 +49,8 @@ frontend/
 
 - `app` قابلیت‌ها را از ورودی عمومی آن‌ها compose می‌کند.
 - feature رابط کاربری می‌تواند از `services`، `core` و ابزارهای مشترک استفاده کند.
+- مدل‌های خالص در `features/*/model`، هماهنگی سناریو در hookها و نمایش در
+  componentها قرار می‌گیرد؛ جهت import با ESLint نیز کنترل می‌شود.
 - `services` می‌تواند به `core` وابسته باشد، اما به componentها یا state رابط کاربری وابسته نیست.
 - جهت وابستگی داخل هر service مشخص است: `hooks → api → schema/core`.
 - `layout.tsx` یک Server Component باقی می‌ماند و فقط subtree برنامه را با Client Provider کوچک TanStack Query می‌پوشاند.
@@ -79,6 +83,8 @@ frontend/
 - queryهای خواندنی در آینده باید query key پایدار و schema پاسخ مختص feature داشته باشند.
 - مقایسه دو فایل یک عملیات کاربرمحور است و با `useMutation` انجام می‌شود، نه `useQuery`.
 - retry خودکار mutationها غیرفعال است تا آپلود فایل بدون اقدام صریح کاربر تکرار نشود.
+- mutationهای فضای کاری از `useSessionMutation` استفاده می‌کنند؛ خروج یا تغییر
+  نشست، نتیجه دیررس عملیات قبلی را از بازگرداندن داده به کش منع می‌کند.
 - client مشترک فقط URL، شبکه، JSON، schema پاسخ و قرارداد خطای سراسری را مدیریت می‌کند؛ ساخت `FormData` در فایل API همان service باقی می‌ماند.
 - خطای اعتبارسنجی محلی از state سرور جداست؛ بنابراین خطای فایل، نتیجه موفق قبلی را حذف نمی‌کند.
 
@@ -140,6 +146,26 @@ pnpm --dir frontend dev
 
 رابط فارسی با فونت متغیر Vazirmatn به‌صورت local و از طریق `next/font/local` ارائه می‌شود. فایل فونت، اطلاعات نسخه، checksum و متن کامل مجوز SIL Open Font License 1.1 در `src/assets/fonts` نگهداری می‌شوند. هیچ درخواست runtime به CDN فونت ارسال نمی‌شود.
 
+## قالب‌بندی یکدست
+
+مرجع فرمت کد، `prettier.config.mjs` و نسخه دقیق Prettier در `package.json` است.
+تورفتگی ۲ فاصله، طول خط پیشنهادی ۱۰۰ کاراکتر، double quote، semicolon،
+trailing comma و پایان خط LF در کل فرانت یکسان‌اند. طول خط یک راهنماست، نه
+محدودیت سخت برای رشته‌ها و نام‌های طولانی. JSX کوتاه فشرده می‌ماند و بخش‌های
+طولانی خودکار چندخطی می‌شوند؛ شکست خط objectهای چندخطی حفظ می‌شود.
+
+از ریشه مخزن، `pnpm --dir frontend format` فرمت را اعمال و
+`pnpm --dir frontend format:check` فقط آن را کنترل می‌کند. این فرمان‌ها فایل‌های
+قابل‌پشتیبانی فرانت، شامل source، تست‌ها، تنظیمات و README را پوشش می‌دهند؛
+خروجی build، فایل‌های تولیدی Next، فونت‌های third-party و envها طبق
+`.prettierignore` کنار گذاشته می‌شوند. کنترل فرمت از قبل در CI فعال است.
+
+در ویرایشگر، افزونه Prettier را formatter پیش‌فرض فایل‌های فرانت قرار دهید و
+Format on Save را فعال کنید؛ همان پیکربندی مخزن به‌صورت خودکار خوانده می‌شود.
+Prettier مسئول ظاهر کد و ESLint مسئول کیفیت کد است؛ پیکربندی سازگاری Prettier
+در انتهای قواعد ESLint از تداخل قواعد ظاهری جلوگیری می‌کند. مرتب‌سازی importها،
+تغییر منطق یا حذف کد بخشی از قالب‌بندی نیست و خودکار انجام نمی‌شود.
+
 ## کنترل کیفیت
 
 از پوشه `frontend` اجرا کنید:
@@ -187,3 +213,8 @@ OPERATOR حالت فقط‌خواندنی می‌بیند. صفحه Supplier ن�
 می‌گیرد، نه از query مستقل Current. `NO_CURRENT` پیام اولین قیمت جاری دارد؛ 409،
 تعویض Target یا مبنا confirmation را باطل می‌کند. Reject مستقل از خرابی گزارش باقی
 می‌ماند.
+
+ریفکتور مسئولیت‌ها، اصلاحات رگرسیونی و روش بررسی دستی در
+[گزارش ریفکتور](../docs/FRONTEND_REFACTOR_REPORT_FA.md) و تصمیم عمر کش نشست در
+ADR 0012 مستند شده‌اند. ورودی‌های عمومی service نسخه‌ها حفظ شده‌اند؛ جزئیات
+schema و query/mutation در فایل‌های داخلی جدا قرار دارند.

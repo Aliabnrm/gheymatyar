@@ -17,8 +17,7 @@ export function ProtectedAppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const account = useCurrentAccountQuery();
-  const isUnauthorized =
-    account.error?.status === 401 || (account.isSuccess && !account.data);
+  const isUnauthorized = account.error?.status === 401 || (account.isSuccess && !account.data);
 
   useEffect(() => {
     if (isUnauthorized) router.replace(AUTH_ROUTES.loginAfterSessionExpired);
@@ -26,10 +25,7 @@ export function ProtectedAppShell({ children }: { children: ReactNode }) {
 
   if (account.isPending || isUnauthorized) {
     return (
-      <main
-        className="grid min-h-screen place-items-center bg-background p-5"
-        aria-busy="true"
-      >
+      <main className="grid min-h-screen place-items-center bg-background p-5" aria-busy="true">
         <AuthStatusPanel message="در حال بررسی نشست و سازمان جاری…" />
       </main>
     );
@@ -61,26 +57,16 @@ export function ProtectedAppShell({ children }: { children: ReactNode }) {
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div className="flex items-center gap-6">
-            <Link
-              href="/"
-              className="text-lg font-bold"
-              aria-label="قیمت‌یار، صفحه اصلی"
-            >
+            <Link href="/" className="text-lg font-bold" aria-label="قیمت‌یار، صفحه اصلی">
               قیمت‌یار
             </Link>
             <nav aria-label="ناوبری اصلی" className="flex items-center gap-1">
-              <Button
-                asChild
-                variant={pathname === "/" ? "secondary" : "ghost"}
-                size="sm"
-              >
+              <Button asChild variant={pathname === "/" ? "secondary" : "ghost"} size="sm">
                 <Link href="/">مقایسه قیمت</Link>
               </Button>
               <Button
                 asChild
-                variant={
-                  pathname.startsWith("/suppliers") ? "secondary" : "ghost"
-                }
+                variant={pathname.startsWith("/suppliers") ? "secondary" : "ghost"}
                 size="sm"
               >
                 <Link href="/suppliers">تأمین‌کنندگان</Link>

@@ -1,12 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
-import type { ComparisonSummary } from "@/services/price-list-comparison/price-list-comparison.schema";
+import type { ComparisonSummary } from "@/services/price-list-shared/price-list-change.schema";
 import { formatInteger } from "@/utils/format";
 
-export function ChangeSummaryCards({
-  summary,
-}: {
-  summary: ComparisonSummary;
-}) {
+export function ChangeSummaryCards({ summary }: { summary: ComparisonSummary }) {
   const cards = [
     ["کالای جدید", summary.added],
     ["حذف‌شده", summary.removed],
@@ -18,10 +14,7 @@ export function ChangeSummaryCards({
   ] as const;
 
   return (
-    <div
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-      aria-label="خلاصه تغییرات"
-    >
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="خلاصه تغییرات">
       {cards.map(([label, value]) => (
         <Card key={label}>
           <CardContent className="grid gap-1 py-4">

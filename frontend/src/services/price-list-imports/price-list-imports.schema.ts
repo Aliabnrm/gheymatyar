@@ -1,14 +1,11 @@
 import { z } from "zod";
 import { MappingSnapshotSchema } from "./column-mapping.schema";
+import { AvailabilitySchema } from "@/services/price-list-shared/price-list-change.schema";
 
 export const PRICE_LIST_IMPORT_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export const PriceListImportStatusSchema = z.enum(["DRAFT", "FAILED"]);
-export const PriceListImportStatusFilterSchema = z.enum([
-  "draft",
-  "failed",
-  "all",
-]);
+export const PriceListImportStatusFilterSchema = z.enum(["draft", "failed", "all"]);
 
 const SupplierSummarySchema = z
   .object({
@@ -28,14 +25,7 @@ const SourceDocumentSchema = z
   })
   .strict()
   .transform(
-    ({
-      original_filename,
-      media_type,
-      size_bytes,
-      sha256_hex,
-      created_at,
-      ...document
-    }) => ({
+    ({ original_filename, media_type, size_bytes, sha256_hex, created_at, ...document }) => ({
       ...document,
       originalFilename: original_filename,
       mediaType: media_type,
@@ -68,19 +58,13 @@ export const PriceListImportSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (
-      value.status === "DRAFT" &&
-      (value.row_count < 1 || value.blocking_error)
-    ) {
+    if (value.status === "DRAFT" && (value.row_count < 1 || value.blocking_error)) {
       context.addIssue({
         code: "custom",
         message: "پاسخ پیش‌نویس Import ناسازگار است.",
       });
     }
-    if (
-      value.status === "FAILED" &&
-      (value.row_count !== 0 || !value.blocking_error)
-    ) {
+    if (value.status === "FAILED" && (value.row_count !== 0 || !value.blocking_error)) {
       context.addIssue({
         code: "custom",
         message: "پاسخ Import ناموفق ناسازگار است.",
@@ -130,7 +114,7 @@ export const ExtractedRowSchema = z
     unit: z.string().nullable(),
     pack_size: z.number().int().positive().nullable(),
     price_irr: z.number().int().positive(),
-    availability: z.enum(["in_stock", "limited", "out_of_stock", "unknown"]),
+    availability: AvailabilitySchema,
     availability_raw: z.string().nullable(),
     notes: z.string().nullable(),
     raw_row: z.record(z.string(), z.unknown()),
@@ -195,12 +179,9 @@ export const PriceListImportUploadInputSchema = z
       .custom<File>((value) => value instanceof File, {
         error: "یک فایل XLSX انتخاب کنید.",
       })
-      .refine(
-        (file) => file.name.toLocaleLowerCase("en-US").endsWith(".xlsx"),
-        {
-          error: "فقط فایل XLSX قابل بارگذاری است.",
-        },
-      )
+      .refine((file) => file.name.toLocaleLowerCase("en-US").endsWith(".xlsx"), {
+        error: "فقط فایل XLSX قابل بارگذاری است.",
+      })
       .refine((file) => file.size > 0, { error: "فایل انتخاب‌شده خالی است." })
       .refine((file) => file.size <= PRICE_LIST_IMPORT_MAX_FILE_SIZE_BYTES, {
         error: "حجم فایل نباید بیشتر از ۱۰ مگابایت باشد.",
@@ -210,23 +191,11 @@ export const PriceListImportUploadInputSchema = z
 
 export type PriceListImport = z.output<typeof PriceListImportSchema>;
 export type PriceListImportList = z.output<typeof PriceListImportListSchema>;
-export type PriceListImportStatus = z.output<
-  typeof PriceListImportStatusSchema
->;
-export type PriceListImportStatusFilter = z.output<
-  typeof PriceListImportStatusFilterSchema
->;
-export type PriceListImportListFilters = z.output<
-  typeof PriceListImportListFiltersSchema
->;
+export type PriceListImportStatus = z.output<typeof PriceListImportStatusSchema>;
+export type PriceListImportStatusFilter = z.output<typeof PriceListImportStatusFilterSchema>;
+export type PriceListImportListFilters = z.output<typeof PriceListImportListFiltersSchema>;
 export type ExtractedRow = z.output<typeof ExtractedRowSchema>;
 export type ExtractedRowList = z.output<typeof ExtractedRowListSchema>;
-export type ExtractedRowPagination = z.output<
-  typeof ExtractedRowPaginationSchema
->;
-export type PriceListImportUploadFormInput = z.input<
-  typeof PriceListImportUploadInputSchema
->;
-export type PriceListImportUploadInput = z.output<
-  typeof PriceListImportUploadInputSchema
->;
+export type ExtractedRowPagination = z.output<typeof ExtractedRowPaginationSchema>;
+export type PriceListImportUploadFormInput = z.input<typeof PriceListImportUploadInputSchema>;
+export type PriceListImportUploadInput = z.output<typeof PriceListImportUploadInputSchema>;

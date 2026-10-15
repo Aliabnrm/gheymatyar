@@ -42,9 +42,7 @@ describe("RegisterForm", () => {
     await user.type(screen.getByLabelText("نام سازمان"), "شرکت نمونه");
     await user.type(screen.getByLabelText("ایمیل مالک"), "owner@example.com");
     await user.type(screen.getByLabelText("رمز عبور"), "short");
-    await user.click(
-      screen.getByRole("button", { name: "ساخت حساب و سازمان" }),
-    );
+    await user.click(screen.getByRole("button", { name: "ساخت حساب و سازمان" }));
 
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
     expect(screen.getByText(/حداقل ۱۲ نویسه/)).toBeInTheDocument();
@@ -57,9 +55,7 @@ describe("RegisterForm", () => {
     await user.type(screen.getByLabelText("نام سازمان"), "  شرکت نمونه  ");
     await user.type(screen.getByLabelText("ایمیل مالک"), "owner@example.com");
     await user.type(screen.getByLabelText("رمز عبور"), "a-secure-password");
-    await user.click(
-      screen.getByRole("button", { name: "ساخت حساب و سازمان" }),
-    );
+    await user.click(screen.getByRole("button", { name: "ساخت حساب و سازمان" }));
 
     expect(mocks.mutateAsync).toHaveBeenCalledWith({
       organizationName: "شرکت نمونه",

@@ -3,6 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 
+import { PaginationControls } from "@/components/shared/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,12 +14,8 @@ import { formatInteger } from "@/utils/format";
 import { AUDIT_ACTION_LABELS } from "../model/approval-labels";
 import { formatVersionDate } from "../model/version-formatters";
 
-function decisionNote(
-  details: Readonly<Record<string, unknown>>,
-): string | null {
-  return typeof details.decision_note === "string"
-    ? details.decision_note
-    : null;
+function decisionNote(details: Readonly<Record<string, unknown>>): string | null {
+  return typeof details.decision_note === "string" ? details.decision_note : null;
 }
 
 export function VersionAuditTimeline({
@@ -45,9 +42,7 @@ export function VersionAuditTimeline({
           این تاریخچه فقط ثبت می‌شود و امکان ویرایش یا حذف از رابط کاربری ندارد.
         </p>
       </div>
-      {audit.isPending ? (
-        <Skeleton className="h-28 w-full" role="status" />
-      ) : null}
+      {audit.isPending ? <Skeleton className="h-28 w-full" role="status" /> : null}
       {audit.isError ? (
         <Alert variant="destructive" role="alert">
           <AlertDescription className="flex items-center justify-between gap-3">
@@ -71,12 +66,9 @@ export function VersionAuditTimeline({
             const note = decisionNote(event.details);
             return (
               <li key={event.id} className="rounded-lg border p-4">
-                <p className="font-medium">
-                  {AUDIT_ACTION_LABELS[event.action]}
-                </p>
+                <p className="font-medium">{AUDIT_ACTION_LABELS[event.action]}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {formatVersionDate(event.occurredAt)} ·{" "}
-                  <span dir="ltr">{event.actorEmail}</span>
+                  {formatVersionDate(event.occurredAt)} · <span dir="ltr">{event.actorEmail}</span>
                 </p>
                 {note ? <p className="mt-3 text-sm">{note}</p> : null}
               </li>
@@ -84,28 +76,15 @@ export function VersionAuditTimeline({
           })}
         </ol>
       ) : null}
-      {audit.data && audit.data.total > limit ? (
-        <div className="flex items-center justify-between gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={offset === 0}
-            onClick={() => setOffset(Math.max(0, offset - limit))}
-          >
-            صفحه قبل
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {formatInteger(audit.data.total)} رویداد
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={offset + limit >= audit.data.total}
-            onClick={() => setOffset(offset + limit)}
-          >
-            صفحه بعد
-          </Button>
-        </div>
+      {audit.data && (audit.data.total > limit || offset > 0) ? (
+        <PaginationControls
+          offset={offset}
+          limit={limit}
+          total={audit.data.total}
+          onOffsetChange={setOffset}
+        >
+          {formatInteger(audit.data.total)} رویداد
+        </PaginationControls>
       ) : null}
     </section>
   );

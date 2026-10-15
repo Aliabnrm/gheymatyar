@@ -60,11 +60,7 @@ export function RegisterForm() {
       noValidate
     >
       {registration.error ? (
-        <AuthFeedback
-          message={registration.error.message}
-          focusable
-          feedbackRef={errorRef}
-        />
+        <AuthFeedback message={registration.error.message} focusable feedbackRef={errorRef} />
       ) : null}
 
       <ControlledInputField

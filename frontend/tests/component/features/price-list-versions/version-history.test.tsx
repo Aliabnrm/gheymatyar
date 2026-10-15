@@ -12,8 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/price-list-versions", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-versions")>();
+  const original = await importOriginal<typeof import("@/services/price-list-versions")>();
   return { ...original, usePriceListVersionsQuery: () => mocks.versions };
 });
 
@@ -45,9 +44,7 @@ describe("VersionHistory", () => {
 
   it("renders loading, empty and server-error states", () => {
     mocks.versions = { isPending: true, isError: false };
-    const view = render(
-      <VersionHistory supplierId={IMPORT_API_FIXTURE.supplier.id} />,
-    );
+    const view = render(<VersionHistory supplierId={IMPORT_API_FIXTURE.supplier.id} />);
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     mocks.versions = {
@@ -55,9 +52,7 @@ describe("VersionHistory", () => {
       isError: false,
       data: { items: [], total: 0, limit: 20, offset: 0 },
     };
-    view.rerender(
-      <VersionHistory supplierId={IMPORT_API_FIXTURE.supplier.id} />,
-    );
+    view.rerender(<VersionHistory supplierId={IMPORT_API_FIXTURE.supplier.id} />);
     expect(screen.getByText(/هنوز نسخه‌ای ثبت نشده است/)).toBeInTheDocument();
 
     mocks.versions = {
@@ -66,9 +61,7 @@ describe("VersionHistory", () => {
       error: { message: "خطای موقت سرور" },
       refetch: vi.fn(),
     };
-    view.rerender(
-      <VersionHistory supplierId={IMPORT_API_FIXTURE.supplier.id} />,
-    );
+    view.rerender(<VersionHistory supplierId={IMPORT_API_FIXTURE.supplier.id} />);
     expect(screen.getByRole("alert")).toHaveTextContent("خطای موقت سرور");
   });
 });

@@ -13,9 +13,7 @@ import {
 
 const AUTH_PATH = "/api/v1/auth" as const;
 
-export function getCurrentAccountApi(
-  signal?: AbortSignal,
-): Promise<AuthContext> {
+export function getCurrentAccountApi(signal?: AbortSignal): Promise<AuthContext> {
   return apiRequest({
     path: `${AUTH_PATH}/me`,
     signal,

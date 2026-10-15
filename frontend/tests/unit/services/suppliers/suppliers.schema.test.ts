@@ -6,16 +6,11 @@ import {
   UpdateSupplierInputSchema,
 } from "@/services/suppliers";
 
-import {
-  SUPPLIER_API_FIXTURE,
-  SUPPLIER_FIXTURE,
-} from "../../../fixtures/suppliers";
+import { SUPPLIER_API_FIXTURE, SUPPLIER_FIXTURE } from "../../../fixtures/suppliers";
 
 describe("supplier schemas", () => {
   it("maps strict API fields to the frontend model", () => {
-    expect(SupplierSchema.parse(SUPPLIER_API_FIXTURE)).toEqual(
-      SUPPLIER_FIXTURE,
-    );
+    expect(SupplierSchema.parse(SUPPLIER_API_FIXTURE)).toEqual(SUPPLIER_FIXTURE);
     expect(
       SupplierSchema.safeParse({
         ...SUPPLIER_API_FIXTURE,
@@ -28,9 +23,7 @@ describe("supplier schemas", () => {
     expect(SupplierNameInputSchema.parse({ name: "  شرکت نمونه  " })).toEqual({
       name: "شرکت نمونه",
     });
-    expect(SupplierNameInputSchema.safeParse({ name: "ا" }).success).toBe(
-      false,
-    );
+    expect(SupplierNameInputSchema.safeParse({ name: "ا" }).success).toBe(false);
   });
 
   it("rejects an empty update", () => {

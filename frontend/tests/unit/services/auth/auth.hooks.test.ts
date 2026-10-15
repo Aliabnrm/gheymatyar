@@ -1,10 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 
-import {
-  clearAuthenticatedData,
-  currentAccountQueryKey,
-} from "@/services/auth/auth.hooks";
+import { clearAuthenticatedData, currentAccountQueryKey } from "@/services/auth/auth.hooks";
 
 import { AUTH_ACCOUNT_FIXTURE } from "../../../fixtures/auth";
 
@@ -27,17 +24,11 @@ describe("auth cache lifecycle", () => {
     clearAuthenticatedData(queryClient);
 
     expect(queryClient.getQueryData(currentAccountQueryKey)).toBeNull();
-    expect(
-      queryClient.getQueryData(["price-list-comparison", "latest"]),
-    ).toBeUndefined();
+    expect(queryClient.getQueryData(["price-list-comparison", "latest"])).toBeUndefined();
     expect(queryClient.getQueryData(["suppliers", "list"])).toBeUndefined();
+    expect(queryClient.getQueryData(["price-list-imports", "supplier", "id"])).toBeUndefined();
     expect(
-      queryClient.getQueryData(["price-list-imports", "supplier", "id"]),
-    ).toBeUndefined();
-    expect(
-      queryClient
-        .getMutationCache()
-        .findAll({ mutationKey: ["price-list-comparison"] }),
+      queryClient.getMutationCache().findAll({ mutationKey: ["price-list-comparison"] }),
     ).toHaveLength(0);
   });
 });

@@ -27,11 +27,9 @@ vi.mock("@/services/auth", () => ({
 }));
 
 vi.mock("@/features/price-list-comparison", () => ({
-  PriceListComparisonPage: ({
-    accountActions,
-  }: {
-    accountActions: React.ReactNode;
-  }) => <div data-testid="workspace">{accountActions}</div>,
+  PriceListComparisonPage: ({ accountActions }: { accountActions: React.ReactNode }) => (
+    <div data-testid="workspace">{accountActions}</div>
+  ),
 }));
 
 beforeEach(() => {
@@ -64,9 +62,7 @@ describe("ProtectedDashboard", () => {
     render(<ProtectedDashboard />);
 
     await waitFor(() =>
-      expect(mocks.replace).toHaveBeenCalledWith(
-        "/login?reason=session-expired",
-      ),
+      expect(mocks.replace).toHaveBeenCalledWith("/login?reason=session-expired"),
     );
     expect(screen.queryByTestId("workspace")).not.toBeInTheDocument();
   });
@@ -94,9 +90,7 @@ describe("ProtectedDashboard", () => {
     };
     render(<ProtectedDashboard />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "دریافت اطلاعات حساب ممکن نشد",
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("دریافت اطلاعات حساب ممکن نشد");
     await user.click(screen.getByRole("button", { name: "تلاش دوباره" }));
 
     expect(mocks.refetch).toHaveBeenCalledOnce();

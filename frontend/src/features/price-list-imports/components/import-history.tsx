@@ -4,6 +4,7 @@ import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { PaginationControls } from "@/components/shared/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import {
   usePriceListImportsQuery,
   type PriceListImportStatusFilter,
 } from "@/services/price-list-imports";
-import { formatInteger } from "@/utils/format";
+import { formatInteger, formatPaginationRange } from "@/utils/format";
 
 import { ImportStatusBadge } from "./import-status-badge";
 import { formatImportDateTime } from "../model/import-formatters";
@@ -67,16 +68,13 @@ export function ImportHistory({
       {!supplierIsActive ? (
         <Alert role="status">
           <AlertDescription>
-            تاریخچه قابل مشاهده است، اما برای بارگذاری جدید باید تأمین‌کننده را
-            فعال کنید.
+            تاریخچه قابل مشاهده است، اما برای بارگذاری جدید باید تأمین‌کننده را فعال کنید.
           </AlertDescription>
         </Alert>
       ) : null}
 
       <div className="flex flex-wrap gap-2" aria-label="فیلتر وضعیت Import">
-        {(
-          Object.keys(STATUS_FILTER_LABELS) as PriceListImportStatusFilter[]
-        ).map((filter) => (
+        {(Object.keys(STATUS_FILTER_LABELS) as PriceListImportStatusFilter[]).map((filter) => (
           <Button
             key={filter}
             type="button"
@@ -91,11 +89,7 @@ export function ImportHistory({
       </div>
 
       {imports.isPending ? (
-        <div
-          className="grid gap-3"
-          role="status"
-          aria-label="در حال دریافت تاریخچه فایل‌ها"
-        >
+        <div className="grid gap-3" role="status" aria-label="در حال دریافت تاریخچه فایل‌ها">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>
@@ -105,12 +99,7 @@ export function ImportHistory({
         <Alert variant="destructive" role="alert">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             <span>{imports.error.message}</span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => imports.refetch()}
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => imports.refetch()}>
               <RefreshCw aria-hidden="true" /> تلاش دوباره
             </Button>
           </AlertDescription>
@@ -130,7 +119,7 @@ export function ImportHistory({
         </Card>
       ) : null}
 
-      {imports.data && imports.data.items.length > 0 ? (
+      {imports.data ? (
         <div className="grid gap-3">
           {imports.data.items.map((priceListImport) => (
             <Card key={priceListImport.id}>
@@ -153,29 +142,14 @@ export function ImportHistory({
               </CardHeader>
             </Card>
           ))}
-          <div className="flex items-center justify-between gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-            >
-              صفحه قبل
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {formatInteger(offset + 1)} تا{" "}
-              {formatInteger(Math.min(offset + limit, imports.data.total))} از{" "}
-              {formatInteger(imports.data.total)}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={offset + limit >= imports.data.total}
-              onClick={() => setOffset(offset + limit)}
-            >
-              صفحه بعد
-            </Button>
-          </div>
+          <PaginationControls
+            offset={offset}
+            limit={limit}
+            total={imports.data.total}
+            onOffsetChange={setOffset}
+          >
+            {formatPaginationRange(offset, limit, imports.data.total)}
+          </PaginationControls>
         </div>
       ) : null}
     </section>

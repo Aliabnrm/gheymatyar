@@ -10,8 +10,7 @@ export const IMPORT_API_FIXTURE = {
   source_document: {
     id: DOCUMENT_ID,
     original_filename: "price-list.xlsx",
-    media_type:
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    media_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     size_bytes: 24_576,
     sha256_hex: "a".repeat(64),
     created_at: "2026-09-03T10:00:00Z",

@@ -23,8 +23,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/services/price-list-versions", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-versions")>();
+  const original = await importOriginal<typeof import("@/services/price-list-versions")>();
   return {
     ...original,
     useImportChangeReportQuery: () => mocks.comparison,
@@ -33,8 +32,7 @@ vi.mock("@/services/price-list-versions", async (importOriginal) => {
 });
 
 vi.mock("@/services/suppliers", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/suppliers")>();
+  const original = await importOriginal<typeof import("@/services/suppliers")>();
   return { ...original, useSupplierQuery: () => mocks.supplier };
 });
 
@@ -71,9 +69,7 @@ describe("ImportChangeReview", () => {
   it("renders loading and safe server error states", () => {
     mocks.comparison = { isPending: true };
     const view = renderReview();
-    expect(screen.getByRole("status")).toHaveAccessibleName(
-      "در حال دریافت مقایسه نسخه قیمت",
-    );
+    expect(screen.getByRole("status")).toHaveAccessibleName("در حال دریافت مقایسه نسخه قیمت");
 
     mocks.comparison = {
       isPending: false,
@@ -94,25 +90,19 @@ describe("ImportChangeReview", () => {
     mocks.comparison = {
       isPending: false,
       isError: false,
-      data: ImportChangeReportSchema.parse(
-        FIRST_IMPORT_CHANGE_REPORT_API_FIXTURE,
-      ),
+      data: ImportChangeReportSchema.parse(FIRST_IMPORT_CHANGE_REPORT_API_FIXTURE),
       refetch: vi.fn(),
     };
     renderReview();
 
     expect(screen.getByText("اولین نسخه این تأمین‌کننده")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "ساخت نسخه تغییرناپذیر" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "ساخت نسخه تغییرناپذیر" })).toBeDisabled();
   });
 
   it("renders semantic multi-label changes, leading zeroes and untrusted text safely", () => {
     renderReview();
 
-    expect(
-      screen.getByRole("table", { name: "جزئیات تغییرات نسخه قیمت" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "جزئیات تغییرات نسخه قیمت" })).toBeInTheDocument();
     expect(screen.getByText("001-A")).toBeInTheDocument();
     expect(screen.getByText("تغییر قیمت")).toBeInTheDocument();
     expect(screen.getByText("تغییر واحد فروش")).toBeInTheDocument();
@@ -135,15 +125,11 @@ describe("ImportChangeReview", () => {
     };
     renderReview();
 
-    expect(
-      screen.getByRole("link", { name: "مشاهده نسخه ثبت‌شده" }),
-    ).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "مشاهده نسخه ثبت‌شده" })).toHaveAttribute(
       "href",
       `/suppliers/${IMPORT_API_FIXTURE.supplier.id}/price-list-versions/${VERSION_API_FIXTURE.id}`,
     );
-    expect(
-      screen.queryByRole("button", { name: "ساخت نسخه تغییرناپذیر" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ساخت نسخه تغییرناپذیر" })).not.toBeInTheDocument();
   });
 
   it("makes inactive suppliers read-only", () => {
@@ -156,8 +142,6 @@ describe("ImportChangeReview", () => {
     renderReview();
 
     expect(screen.getByText(/تأمین‌کننده غیرفعال است/)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "ساخت نسخه تغییرناپذیر" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "ساخت نسخه تغییرناپذیر" })).toBeDisabled();
   });
 });

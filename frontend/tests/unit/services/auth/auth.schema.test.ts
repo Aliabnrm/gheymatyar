@@ -10,9 +10,7 @@ import { AUTH_ACCOUNT_FIXTURE } from "../../../fixtures/auth";
 
 describe("auth schemas", () => {
   it("accepts only the safe account context and current roles", () => {
-    expect(AuthContextSchema.parse(AUTH_ACCOUNT_FIXTURE)).toEqual(
-      AUTH_ACCOUNT_FIXTURE,
-    );
+    expect(AuthContextSchema.parse(AUTH_ACCOUNT_FIXTURE)).toEqual(AUTH_ACCOUNT_FIXTURE);
     expect(
       AuthContextSchema.safeParse({
         ...AUTH_ACCOUNT_FIXTURE,
@@ -28,10 +26,9 @@ describe("auth schemas", () => {
   });
 
   it("validates login and registration inputs before sending", () => {
-    expect(
-      LoginInputSchema.safeParse({ email: "invalid", password: "password" })
-        .success,
-    ).toBe(false);
+    expect(LoginInputSchema.safeParse({ email: "invalid", password: "password" }).success).toBe(
+      false,
+    );
     expect(
       RegisterInputSchema.safeParse({
         organizationName: "شرکت",

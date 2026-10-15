@@ -1,8 +1,7 @@
 const CSRF_COOKIE_NAME = "gheymatyar_csrf";
 
 export function readCsrfCookie(cookieSource?: string): string | null {
-  const source =
-    cookieSource ?? (typeof document === "undefined" ? "" : document.cookie);
+  const source = cookieSource ?? (typeof document === "undefined" ? "" : document.cookie);
   for (const part of source.split(";")) {
     const [rawName, ...rawValue] = part.trim().split("=");
     if (rawName !== CSRF_COOKIE_NAME) continue;

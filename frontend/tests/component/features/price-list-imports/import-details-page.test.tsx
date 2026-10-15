@@ -2,20 +2,16 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ImportDetailsPage } from "@/features/price-list-imports";
-import {
-  ExtractedRowSchema,
-  PriceListImportSchema,
-} from "@/services/price-list-imports";
+import { ExtractedRowSchema, PriceListImportSchema } from "@/services/price-list-imports";
 
 import {
   EXTRACTED_ROW_API_FIXTURE,
   IMPORT_API_FIXTURE,
 } from "../../../fixtures/price-list-imports";
 
-vi.mock(
-  "@/features/price-list-imports/components/column-mapping-panel",
-  () => ({ ColumnMappingPanel: () => <section aria-label="نگاشت ستون‌ها" /> }),
-);
+vi.mock("@/features/price-list-imports/components/column-mapping-panel", () => ({
+  ColumnMappingPanel: () => <section aria-label="نگاشت ستون‌ها" />,
+}));
 
 vi.mock("@/features/price-list-versions", () => ({
   ImportChangeReview: () => <section aria-label="مقایسه نسخه قیمت" />,
@@ -27,8 +23,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/price-list-imports", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-imports")>();
+  const original = await importOriginal<typeof import("@/services/price-list-imports")>();
   return {
     ...original,
     usePriceListImportQuery: () => mocks.detail,
@@ -68,9 +63,7 @@ describe("ImportDetailsPage", () => {
       screen.getByRole("table", { name: "ردیف‌های استخراج‌شده لیست قیمت" }),
     ).toBeInTheDocument();
     expect(screen.getByText("001-A")).toBeInTheDocument();
-    expect(
-      screen.getByText(/هنوز تأیید یا منتشر نشده‌اند/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/هنوز تأیید یا منتشر نشده‌اند/)).toBeInTheDocument();
   });
 
   it("renders a blocking error for a failed import and no rows table", () => {
@@ -97,9 +90,7 @@ describe("ImportDetailsPage", () => {
     );
 
     expect(screen.getByText("استخراج ناموفق")).toBeInTheDocument();
-    expect(
-      screen.getByText("ستون‌های اجباری فایل پیدا نشدند."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("ستون‌های اجباری فایل پیدا نشدند.")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
@@ -117,8 +108,6 @@ describe("ImportDetailsPage", () => {
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Import موردنظر پیدا نشد.",
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Import موردنظر پیدا نشد.");
   });
 });

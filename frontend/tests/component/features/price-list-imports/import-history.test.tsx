@@ -11,8 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/price-list-imports", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-imports")>();
+  const original = await importOriginal<typeof import("@/services/price-list-imports")>();
   return {
     ...original,
     usePriceListImportsQuery: () => mocks.imports,
@@ -29,19 +28,10 @@ beforeEach(() => {
 
 describe("ImportHistory", () => {
   it("shows an upload action and an empty state for an active supplier", () => {
-    render(
-      <ImportHistory
-        supplierId={IMPORT_API_FIXTURE.supplier.id}
-        supplierIsActive
-      />,
-    );
+    render(<ImportHistory supplierId={IMPORT_API_FIXTURE.supplier.id} supplierIsActive />);
 
-    expect(
-      screen.getByRole("link", { name: "بارگذاری فایل قیمت" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("فایلی در این وضعیت وجود ندارد."),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "بارگذاری فایل قیمت" })).toBeInTheDocument();
+    expect(screen.getByText("فایلی در این وضعیت وجود ندارد.")).toBeInTheDocument();
   });
 
   it("keeps history readable but disables new upload for an inactive supplier", () => {
@@ -55,19 +45,10 @@ describe("ImportHistory", () => {
         offset: 0,
       },
     };
-    render(
-      <ImportHistory
-        supplierId={IMPORT_API_FIXTURE.supplier.id}
-        supplierIsActive={false}
-      />,
-    );
+    render(<ImportHistory supplierId={IMPORT_API_FIXTURE.supplier.id} supplierIsActive={false} />);
 
-    expect(
-      screen.queryByRole("link", { name: "بارگذاری فایل قیمت" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "بارگذاری فایل قیمت" })).not.toBeInTheDocument();
     expect(screen.getByText("پیش‌نویس آماده بازبینی")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "price-list.xlsx" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "price-list.xlsx" })).toBeInTheDocument();
   });
 });

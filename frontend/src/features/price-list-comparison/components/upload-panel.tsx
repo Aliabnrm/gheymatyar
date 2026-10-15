@@ -28,11 +28,7 @@ export function UploadPanel({
   }
 
   return (
-    <form
-      className="upload-panel"
-      aria-busy={isSubmitting}
-      onSubmit={handleSubmit}
-    >
+    <form className="upload-panel" aria-busy={isSubmitting} onSubmit={handleSubmit}>
       <div className="section-heading">
         <div>
           <span className="step-label">گام ۱ از ۲</span>
@@ -66,10 +62,7 @@ export function UploadPanel({
       {error ? <ComparisonErrorBanner error={error} /> : null}
 
       <div className="upload-actions">
-        <p>
-          با شروع مقایسه، فایل‌ها فقط خوانده می‌شوند و محتوای اصلی تغییر
-          نمی‌کند.
-        </p>
+        <p>با شروع مقایسه، فایل‌ها فقط خوانده می‌شوند و محتوای اصلی تغییر نمی‌کند.</p>
         <button
           className="primary-button"
           type="submit"

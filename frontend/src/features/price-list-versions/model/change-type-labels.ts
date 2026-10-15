@@ -1,4 +1,4 @@
-import type { ChangeType } from "@/services/price-list-comparison/price-list-comparison.schema";
+import type { ChangeType } from "@/services/price-list-shared/price-list-change.schema";
 
 export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   ADDED: "کالای جدید",

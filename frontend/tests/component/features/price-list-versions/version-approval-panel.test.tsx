@@ -6,10 +6,7 @@ import { VersionApprovalPanel } from "@/features/price-list-versions";
 import { ApiRequestError } from "@/core/api/api-error";
 
 import { IMPORT_API_FIXTURE } from "../../../fixtures/price-list-imports";
-import {
-  PREVIOUS_VERSION_ID,
-  VERSION_ID,
-} from "../../../fixtures/price-list-versions";
+import { PREVIOUS_VERSION_ID, VERSION_ID } from "../../../fixtures/price-list-versions";
 
 const mocks = vi.hoisted(() => ({
   approve: {} as Record<string, unknown>,
@@ -20,8 +17,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/price-list-versions", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-versions")>();
+  const original = await importOriginal<typeof import("@/services/price-list-versions")>();
   return {
     ...original,
     useApprovePriceListVersionMutation: () => mocks.approve,
@@ -84,13 +80,8 @@ describe("VersionApprovalPanel", () => {
     });
     expect(approveButton).toBeDisabled();
 
-    await user.click(
-      screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ }),
-    );
-    await user.type(
-      screen.getByLabelText("یادداشت تأیید (اختیاری)"),
-      "تأیید شد",
-    );
+    await user.click(screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ }));
+    await user.type(screen.getByLabelText("یادداشت تأیید (اختیاری)"), "تأیید شد");
     await user.click(approveButton);
 
     expect(mocks.approveAsync).toHaveBeenCalledWith({
@@ -102,9 +93,7 @@ describe("VersionApprovalPanel", () => {
         decisionNote: "تأیید شد",
       },
     });
-    expect(
-      await screen.findByText(/نسخه تأیید شد و به‌عنوان قیمت جاری/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/نسخه تأیید شد و به‌عنوان قیمت جاری/)).toBeInTheDocument();
   });
 
   it("validates rejection and supports keyboard closing", async () => {
@@ -115,9 +104,7 @@ describe("VersionApprovalPanel", () => {
     expect(reason).toHaveFocus();
 
     await user.click(screen.getByRole("button", { name: "ثبت رد نسخه" }));
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "تأیید صریح رد نسخه الزامی است",
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("تأیید صریح رد نسخه الزامی است");
 
     await user.keyboard("{Escape}");
     expect(screen.queryByLabelText("دلیل رد نسخه")).not.toBeInTheDocument();
@@ -128,10 +115,7 @@ describe("VersionApprovalPanel", () => {
     renderPanel();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "رد نسخه" }));
-    await user.type(
-      screen.getByLabelText("دلیل رد نسخه"),
-      "  قیمت اشتباه است  ",
-    );
+    await user.type(screen.getByLabelText("دلیل رد نسخه"), "  قیمت اشتباه است  ");
     await user.click(
       screen.getByRole("checkbox", {
         name: "رد نهایی این نسخه را تأیید می‌کنم.",
@@ -151,9 +135,7 @@ describe("VersionApprovalPanel", () => {
   it("is read-only for operators and terminal decisions", () => {
     const view = renderPanel(false);
     expect(screen.getByText(/دسترسی شما فقط برای مشاهده/)).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /تأیید/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /تأیید/ })).not.toBeInTheDocument();
 
     view.rerender(
       <VersionApprovalPanel
@@ -176,9 +158,7 @@ describe("VersionApprovalPanel", () => {
       mutateAsync: mocks.approveAsync,
     };
     const view = renderPanel();
-    expect(
-      screen.getByRole("button", { name: "در حال تأیید…" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "در حال تأیید…" })).toBeDisabled();
 
     mocks.approve = {
       isPending: false,
@@ -201,19 +181,13 @@ describe("VersionApprovalPanel", () => {
         onApprovalConflict={mocks.conflict}
       />,
     );
-    expect(screen.getByRole("alert", { name: "" })).toHaveTextContent(
-      "اطلاعات تازه دریافت شد",
-    );
+    expect(screen.getByRole("alert", { name: "" })).toHaveTextContent("اطلاعات تازه دریافت شد");
   });
 
   it("blocks approval without a pinned report but keeps rejection available", async () => {
     renderPanel(true, "READY_FOR_REVIEW", null);
-    expect(
-      screen.getByText(/گزارش اثر بر قیمت جاری باید با مبنای ثابت/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }),
-    ).toBeDisabled();
+    expect(screen.getByText(/گزارش اثر بر قیمت جاری باید با مبنای ثابت/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "رد نسخه" })).toBeEnabled();
   });
 
@@ -258,9 +232,7 @@ describe("VersionApprovalPanel", () => {
       name: /تغییرات نسخه را بررسی کردم/,
     });
     await user.click(confirmation);
-    await user.click(
-      screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }),
-    );
+    await user.click(screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }));
 
     await waitFor(() => expect(mocks.conflict).toHaveBeenCalledOnce());
     expect(confirmation).not.toBeChecked();

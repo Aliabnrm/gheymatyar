@@ -43,9 +43,7 @@ afterEach(() => {
 });
 describe("mapping HTTP contracts", () => {
   it("bounds preview and validates canonical fields", () => {
-    expect(MappingReviewSchema.safeParse(MAPPING_REVIEW_FIXTURE).success).toBe(
-      true,
-    );
+    expect(MappingReviewSchema.safeParse(MAPPING_REVIEW_FIXTURE).success).toBe(true);
     expect(
       MappingReviewSchema.safeParse({
         ...MAPPING_REVIEW_FIXTURE,
@@ -59,12 +57,8 @@ describe("mapping HTTP contracts", () => {
   it("sends selection in GET and CSRF only for explicit mutations", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(MAPPING_REVIEW_FIXTURE), { status: 200 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(IMPORT_API_FIXTURE), { status: 201 }),
-      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(MAPPING_REVIEW_FIXTURE), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(IMPORT_API_FIXTURE), { status: 201 }))
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -83,25 +77,15 @@ describe("mapping HTTP contracts", () => {
       header_row: 2,
     });
     expect(fetchMock.mock.calls[0]![0]).toContain("header_row=2");
-    expect(
-      new Headers(fetchMock.mock.calls[0]![1].headers).has("X-CSRF-Token"),
-    ).toBe(false);
-    await rerunImportApi(
-      "supplier",
-      "import",
-      MAPPING_REVIEW_FIXTURE.inspection.used_mapping!,
-    );
+    expect(new Headers(fetchMock.mock.calls[0]![1].headers).has("X-CSRF-Token")).toBe(false);
+    await rerunImportApi("supplier", "import", MAPPING_REVIEW_FIXTURE.inspection.used_mapping!);
     expect(fetchMock.mock.calls[1]![1].method).toBe("POST");
-    expect(
-      new Headers(fetchMock.mock.calls[1]![1].headers).get("X-CSRF-Token"),
-    ).toBe("test-token");
+    expect(new Headers(fetchMock.mock.calls[1]![1].headers).get("X-CSRF-Token")).toBe("test-token");
     await saveMappingTemplateApi("supplier", {
       source_import_id: IMPORT_API_FIXTURE.id,
       expected_template_id: IMPORT_API_FIXTURE.id,
       confirm_replace: true,
     });
-    expect(JSON.parse(fetchMock.mock.calls[2]![1].body).confirm_replace).toBe(
-      true,
-    );
+    expect(JSON.parse(fetchMock.mock.calls[2]![1].body).confirm_replace).toBe(true);
   });
 });

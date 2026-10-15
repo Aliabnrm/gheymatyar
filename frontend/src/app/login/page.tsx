@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
 
-import {
-  AuthFeedback,
-  AuthPageShell,
-  LoginForm,
-  PublicAuthGate,
-} from "@/features/auth";
+import { AuthFeedback, AuthPageShell, LoginForm, PublicAuthGate } from "@/features/auth";
 
 export const metadata: Metadata = { title: "ورود | قیمت‌یار" };
 
@@ -34,9 +29,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         alternateHref="/register"
         alternateLabel="ثبت‌نام اولیه"
       >
-        {notice ? (
-          <AuthFeedback message={notice} tone="info" className="mb-5" />
-        ) : null}
+        {notice ? <AuthFeedback message={notice} tone="info" className="mb-5" /> : null}
         <LoginForm />
       </AuthPageShell>
     </PublicAuthGate>

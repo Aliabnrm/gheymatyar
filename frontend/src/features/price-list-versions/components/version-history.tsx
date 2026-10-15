@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { PaginationControls } from "@/components/shared/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePriceListVersionsQuery } from "@/services/price-list-versions";
 import { formatInteger } from "@/utils/format";
 
-import {
-  ApprovalStatusBadge,
-  CurrentVersionBadge,
-} from "./approval-status-badge";
+import { ApprovalStatusBadge, CurrentVersionBadge } from "./approval-status-badge";
 import { formatVersionDate } from "../model/version-formatters";
 
 export function VersionHistory({ supplierId }: { supplierId: string }) {
@@ -29,13 +27,10 @@ export function VersionHistory({ supplierId }: { supplierId: string }) {
           نسخه‌های ثبت‌شده قیمت
         </h2>
         <p className="text-sm text-muted-foreground">
-          هر نسخه تغییرناپذیر است و وضعیت بررسی و جاری‌بودن آن جداگانه نمایش
-          داده می‌شود.
+          هر نسخه تغییرناپذیر است و وضعیت بررسی و جاری‌بودن آن جداگانه نمایش داده می‌شود.
         </p>
       </div>
-      {versions.isPending ? (
-        <Skeleton className="h-32 w-full" role="status" />
-      ) : null}
+      {versions.isPending ? <Skeleton className="h-32 w-full" role="status" /> : null}
       {versions.isError ? (
         <Alert variant="destructive" role="alert">
           <AlertDescription className="flex items-center justify-between gap-3">
@@ -49,8 +44,7 @@ export function VersionHistory({ supplierId }: { supplierId: string }) {
       {versions.data?.items.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            هنوز نسخه‌ای ثبت نشده است. پس از بازبینی یک Import معتبر، اولین نسخه
-            را بسازید.
+            هنوز نسخه‌ای ثبت نشده است. پس از بازبینی یک Import معتبر، اولین نسخه را بسازید.
           </CardContent>
         </Card>
       ) : null}
@@ -71,8 +65,7 @@ export function VersionHistory({ supplierId }: { supplierId: string }) {
                 {version.isCurrent ? <CurrentVersionBadge /> : null}
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatVersionDate(version.createdAt)} ·{" "}
-                {formatInteger(version.rowCount)} کالا
+                {formatVersionDate(version.createdAt)} · {formatInteger(version.rowCount)} کالا
               </p>
               {version.decidedAt && version.decidedByEmail ? (
                 <p className="text-xs text-muted-foreground">
@@ -87,28 +80,15 @@ export function VersionHistory({ supplierId }: { supplierId: string }) {
           </CardHeader>
         </Card>
       ))}
-      {versions.data && versions.data.total > limit ? (
-        <div className="flex items-center justify-between gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={offset === 0}
-            onClick={() => setOffset(Math.max(0, offset - limit))}
-          >
-            صفحه قبل
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {formatInteger(versions.data.total)} نسخه
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={offset + limit >= versions.data.total}
-            onClick={() => setOffset(offset + limit)}
-          >
-            صفحه بعد
-          </Button>
-        </div>
+      {versions.data && (versions.data.total > limit || offset > 0) ? (
+        <PaginationControls
+          offset={offset}
+          limit={limit}
+          total={versions.data.total}
+          onOffsetChange={setOffset}
+        >
+          {formatInteger(versions.data.total)} نسخه
+        </PaginationControls>
       ) : null}
     </section>
   );

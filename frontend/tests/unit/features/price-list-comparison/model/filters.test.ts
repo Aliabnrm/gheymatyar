@@ -33,17 +33,15 @@ const items: ComparisonItem[] = [
 
 describe("comparison filters", () => {
   it("filters independent high risk markers", () => {
-    expect(
-      filterComparisonItems(items, "high-risk").map(
-        (item) => item.product_code,
-      ),
-    ).toEqual(["C"]);
+    expect(filterComparisonItems(items, "high-risk").map((item) => item.product_code)).toEqual([
+      "C",
+    ]);
   });
 
   it("separates metadata-only rows from price changes", () => {
-    expect(
-      filterComparisonItems(items, "metadata").map((item) => item.product_code),
-    ).toEqual(["D"]);
+    expect(filterComparisonItems(items, "metadata").map((item) => item.product_code)).toEqual([
+      "D",
+    ]);
   });
 
   it("does not expose the caller's array for the all filter", () => {

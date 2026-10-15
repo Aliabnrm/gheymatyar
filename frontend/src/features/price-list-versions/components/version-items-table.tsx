@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
+import { PaginationControls } from "@/components/shared/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -75,27 +75,14 @@ export function VersionItemsTable({
           </TableBody>
         </Table>
       )}
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={offset === 0}
-          onClick={() => setOffset(Math.max(0, offset - limit))}
-        >
-          صفحه قبل
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          {formatInteger(rows.data.total)} کالا
-        </span>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={offset + limit >= rows.data.total}
-          onClick={() => setOffset(offset + limit)}
-        >
-          صفحه بعد
-        </Button>
-      </div>
+      <PaginationControls
+        offset={offset}
+        limit={limit}
+        total={rows.data.total}
+        onOffsetChange={setOffset}
+      >
+        {formatInteger(rows.data.total)} کالا
+      </PaginationControls>
     </div>
   );
 }

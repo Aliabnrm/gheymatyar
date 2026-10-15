@@ -27,10 +27,7 @@ export function AuthFeedback({
       role={tone === "error" ? "alert" : "status"}
       tabIndex={focusable ? -1 : undefined}
       ref={feedbackRef}
-      className={cn(
-        tone === "info" && "border-blue-200 bg-blue-50 text-blue-900",
-        className,
-      )}
+      className={cn(tone === "info" && "border-blue-200 bg-blue-50 text-blue-900", className)}
     >
       <Icon aria-hidden="true" />
       <AlertDescription className="text-current">{message}</AlertDescription>

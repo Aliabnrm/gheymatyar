@@ -1,16 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
+import { useSessionMutation } from "@/core/query/use-session-mutation";
 import { useEffect, useRef } from "react";
 
 import { comparePriceListsApi } from "./price-list-comparison.api";
-import type {
-  ComparePriceListsInput,
-  ComparisonResponse,
-} from "./price-list-comparison.schema";
+import type { ComparePriceListsInput, ComparisonResponse } from "./price-list-comparison.schema";
 
-const comparePriceListsMutationKey = [
-  "price-list-comparison",
-  "compare",
-] as const;
+const comparePriceListsMutationKey = ["price-list-comparison", "compare"] as const;
 
 export function useComparePriceListsMutation() {
   const activeRequest = useRef<AbortController | null>(null);
@@ -19,7 +13,7 @@ export function useComparePriceListsMutation() {
     return () => activeRequest.current?.abort();
   }, []);
 
-  return useMutation<ComparisonResponse, unknown, ComparePriceListsInput>({
+  return useSessionMutation<ComparisonResponse, ComparePriceListsInput>({
     mutationKey: comparePriceListsMutationKey,
     retry: false,
     mutationFn: async (input) => {

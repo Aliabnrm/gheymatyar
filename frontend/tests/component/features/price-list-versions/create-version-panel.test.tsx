@@ -5,10 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateVersionPanel } from "@/features/price-list-versions/components/create-version-panel";
 
 import { IMPORT_API_FIXTURE } from "../../../fixtures/price-list-imports";
-import {
-  PREVIOUS_VERSION_ID,
-  VERSION_API_FIXTURE,
-} from "../../../fixtures/price-list-versions";
+import { PREVIOUS_VERSION_ID, VERSION_API_FIXTURE } from "../../../fixtures/price-list-versions";
 
 const mocks = vi.hoisted(() => ({
   mutation: {} as Record<string, unknown>,
@@ -78,9 +75,7 @@ describe("CreateVersionPanel", () => {
       mutateAsync: mocks.mutateAsync,
     };
     const view = renderPanel();
-    expect(
-      screen.getByRole("button", { name: "در حال ساخت نسخه…" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "در حال ساخت نسخه…" })).toBeDisabled();
 
     mocks.mutation = {
       isPending: false,
@@ -90,9 +85,7 @@ describe("CreateVersionPanel", () => {
     view.unmount();
     renderPanel(false);
     expect(screen.getByText(/تأمین‌کننده غیرفعال است/)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "ساخت نسخه تغییرناپذیر" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "ساخت نسخه تغییرناپذیر" })).toBeDisabled();
   });
 
   it("shows a dedicated baseline conflict message", () => {
@@ -111,4 +104,18 @@ describe("CreateVersionPanel", () => {
       "در فاصله بازبینی شما نسخه جدیدی ثبت شده است",
     );
   });
+});
+
+it("requires a new confirmation when the reviewed baseline changes", async () => {
+  const props = {
+    supplierId: IMPORT_API_FIXTURE.supplier.id,
+    importId: IMPORT_API_FIXTURE.id,
+    expectedPreviousVersionId: PREVIOUS_VERSION_ID,
+    supplierIsActive: true,
+  };
+  const view = render(<CreateVersionPanel {...props} />);
+  await userEvent.setup().click(screen.getByRole("checkbox"));
+  view.rerender(<CreateVersionPanel {...props} expectedPreviousVersionId={null} />);
+  expect(screen.getByRole("checkbox")).not.toBeChecked();
+  expect(screen.getByRole("button", { name: "ساخت نسخه تغییرناپذیر" })).toBeDisabled();
 });

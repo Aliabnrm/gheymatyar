@@ -15,10 +15,7 @@ export const ColumnMappingSchema = z
   .object({
     sheet_name: z.string().min(1).max(31),
     header_row: z.number().int().min(1).max(50020),
-    columns: z.partialRecord(
-      CanonicalFieldSchema,
-      z.number().int().min(1).max(200),
-    ),
+    columns: z.partialRecord(CanonicalFieldSchema, z.number().int().min(1).max(200)),
   })
   .strict();
 export const REQUIRED_MAPPING_FIELDS: CanonicalField[] = [
@@ -26,25 +23,23 @@ export const REQUIRED_MAPPING_FIELDS: CanonicalField[] = [
   "product_name",
   "price_irr",
 ];
-export const ColumnMappingInputSchema = ColumnMappingSchema.superRefine(
-  (value, context) => {
-    for (const field of REQUIRED_MAPPING_FIELDS) {
-      if (!value.columns[field])
-        context.addIssue({
-          code: "custom",
-          path: ["columns", field],
-          message: "انتخاب این ستون الزامی است.",
-        });
-    }
-    const positions = Object.values(value.columns);
-    if (new Set(positions).size !== positions.length)
+export const ColumnMappingInputSchema = ColumnMappingSchema.superRefine((value, context) => {
+  for (const field of REQUIRED_MAPPING_FIELDS) {
+    if (!value.columns[field])
       context.addIssue({
         code: "custom",
-        path: ["columns"],
-        message: "هر ستون را فقط برای یک فیلد انتخاب کنید.",
+        path: ["columns", field],
+        message: "انتخاب این ستون الزامی است.",
       });
-  },
-);
+  }
+  const positions = Object.values(value.columns);
+  if (new Set(positions).size !== positions.length)
+    context.addIssue({
+      code: "custom",
+      path: ["columns"],
+      message: "هر ستون را فقط برای یک فیلد انتخاب کنید.",
+    });
+});
 export type ColumnMapping = z.output<typeof ColumnMappingSchema>;
 export const MappingSnapshotSchema = z
   .object({
@@ -61,10 +56,7 @@ export const MappingSnapshotSchema = z
         })
         .strict(),
     ),
-    ambiguous_fields: z.partialRecord(
-      CanonicalFieldSchema,
-      z.array(z.number().int().positive()),
-    ),
+    ambiguous_fields: z.partialRecord(CanonicalFieldSchema, z.array(z.number().int().positive())),
     preview: z
       .array(
         z

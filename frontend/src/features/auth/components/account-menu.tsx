@@ -17,13 +17,11 @@ export function AccountMenu({ account }: { account: AuthContext }) {
   return (
     <div className="relative flex items-center gap-3">
       <div className="hidden max-w-sm text-left sm:block">
-        <strong className="block truncate text-xs text-white">
+        <strong className="block truncate text-xs text-foreground">
           {account.organization.name}
         </strong>
-        <span className="block text-[0.68rem] text-slate-300">
-          <b className="text-teal-300">
-            {ORGANIZATION_ROLE_LABELS[account.membership.role]}
-          </b>
+        <span className="block text-[0.68rem] text-muted-foreground">
+          <b className="text-primary">{ORGANIZATION_ROLE_LABELS[account.membership.role]}</b>
           <span aria-hidden="true"> · </span>
           <span dir="ltr">{account.user.email}</span>
         </span>
@@ -31,7 +29,6 @@ export function AccountMenu({ account }: { account: AuthContext }) {
       <Button
         variant="outline"
         size="sm"
-        className="border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white"
         type="button"
         disabled={logout.isPending}
         onClick={() =>

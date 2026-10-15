@@ -1,6 +1,7 @@
 "use client";
+import { useSessionMutation } from "@/core/query/use-session-mutation";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiRequestError } from "@/core/api/api-error";
 
@@ -21,11 +22,9 @@ import type {
 export const supplierKeys = {
   all: ["suppliers"] as const,
   lists: () => [...supplierKeys.all, "list"] as const,
-  list: (filters: SupplierListFilters) =>
-    [...supplierKeys.lists(), filters] as const,
+  list: (filters: SupplierListFilters) => [...supplierKeys.lists(), filters] as const,
   details: () => [...supplierKeys.all, "detail"] as const,
-  detail: (supplierId: string) =>
-    [...supplierKeys.details(), supplierId] as const,
+  detail: (supplierId: string) => [...supplierKeys.details(), supplierId] as const,
 };
 
 export function useSuppliersQuery(filters: SupplierListFilters) {
@@ -46,7 +45,7 @@ export function useSupplierQuery(supplierId: string) {
 
 export function useCreateSupplierMutation() {
   const queryClient = useQueryClient();
-  return useMutation<Supplier, ApiRequestError, SupplierNameInput>({
+  return useSessionMutation<Supplier, SupplierNameInput>({
     mutationKey: [...supplierKeys.all, "create"],
     mutationFn: createSupplierApi,
     retry: false,
@@ -64,7 +63,7 @@ interface UpdateVariables {
 
 export function useUpdateSupplierMutation() {
   const queryClient = useQueryClient();
-  return useMutation<Supplier, ApiRequestError, UpdateVariables>({
+  return useSessionMutation<Supplier, UpdateVariables>({
     mutationKey: [...supplierKeys.all, "update"],
     mutationFn: ({ supplierId, input }) => updateSupplierApi(supplierId, input),
     retry: false,

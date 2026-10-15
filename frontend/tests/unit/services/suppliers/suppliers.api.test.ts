@@ -51,9 +51,7 @@ describe("supplier API", () => {
 
     const createRequest = fetchMock.mock.calls[0]?.[1] as RequestInit;
     const updateRequest = fetchMock.mock.calls[1]?.[1] as RequestInit;
-    expect(new Headers(createRequest.headers).get("X-CSRF-Token")).toBe(
-      "csrf-token",
-    );
+    expect(new Headers(createRequest.headers).get("X-CSRF-Token")).toBe("csrf-token");
     expect(JSON.parse(String(createRequest.body))).toEqual({
       name: "تأمین‌کننده نمونه",
     });

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi } from "vitest";
+import { ApiRequestError } from "@/core/api/api-error";
 import {
   useRerunImportMutation,
   useSaveMappingTemplateMutation,
@@ -18,6 +19,31 @@ vi.mock("@/services/price-list-imports/column-mapping.api", () => ({
 }));
 
 describe("mapping cache lifecycle", () => {
+  it("refreshes a conflicting template rather than repeatedly sending the stale id", async () => {
+    const client = new QueryClient();
+    const key = mappingKeys.review("supplier", "import");
+    const other = mappingKeys.review("other", "import");
+    client.setQueryData(key, {});
+    client.setQueryData(other, {});
+    mocks.save.mockRejectedValue(
+      new ApiRequestError("الگو تغییر کرد", {
+        code: "MAPPING_TEMPLATE_CONFLICT",
+        status: 409,
+      }),
+    );
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => useSaveMappingTemplateMutation("supplier"), { wrapper });
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ source_import_id: IMPORT_API_FIXTURE.id }),
+      ).rejects.toMatchObject({ status: 409 });
+    });
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+    client.clear();
+  });
   it("invalidates history, original detail, rows and mapping after a rerun, scoped to supplier", async () => {
     const client = new QueryClient({
       defaultOptions: {
@@ -50,24 +76,15 @@ describe("mapping cache lifecycle", () => {
     const { result } = renderHook(() => useRerunImportMutation(supplier, id), {
       wrapper,
     });
-    await act(() =>
-      result.current.mutateAsync(
-        MAPPING_REVIEW_FIXTURE.inspection.used_mapping!,
-      ),
-    );
+    await act(() => result.current.mutateAsync(MAPPING_REVIEW_FIXTURE.inspection.used_mapping!));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    keys.forEach((key) =>
-      expect(client.getQueryState(key)?.isInvalidated).toBe(true),
+    keys.forEach((key) => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+    expect(client.getQueryState(priceListImportKeys.detail("other", id))?.isInvalidated).toBe(
+      false,
     );
-    expect(
-      client.getQueryState(priceListImportKeys.detail("other", id))
-        ?.isInvalidated,
-    ).toBe(false);
-    expect(
-      client.getQueryData(
-        priceListImportKeys.detail(supplier, resultImport.id),
-      ),
-    ).toEqual(resultImport);
+    expect(client.getQueryData(priceListImportKeys.detail(supplier, resultImport.id))).toEqual(
+      resultImport,
+    );
     client.clear();
   });
   it("refreshes the saved template after explicit saving", async () => {
@@ -78,13 +95,8 @@ describe("mapping cache lifecycle", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
-    const { result } = renderHook(
-      () => useSaveMappingTemplateMutation("supplier"),
-      { wrapper },
-    );
-    await act(() =>
-      result.current.mutateAsync({ source_import_id: IMPORT_API_FIXTURE.id }),
-    );
+    const { result } = renderHook(() => useSaveMappingTemplateMutation("supplier"), { wrapper });
+    await act(() => result.current.mutateAsync({ source_import_id: IMPORT_API_FIXTURE.id }));
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
     client.clear();
   });

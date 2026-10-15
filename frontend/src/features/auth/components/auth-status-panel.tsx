@@ -10,11 +10,7 @@ interface AuthStatusPanelProps {
   error?: ReactNode;
 }
 
-export function AuthStatusPanel({
-  message,
-  action,
-  error,
-}: AuthStatusPanelProps) {
+export function AuthStatusPanel({ message, action, error }: AuthStatusPanelProps) {
   return (
     <Card className="w-full max-w-md border-border/80 shadow-xl">
       <CardContent className="grid justify-items-center gap-4 py-3 text-center">

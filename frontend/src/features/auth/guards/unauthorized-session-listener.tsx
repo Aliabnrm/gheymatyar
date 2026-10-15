@@ -22,8 +22,7 @@ export function UnauthorizedSessionListener() {
       }
     };
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
-    return () =>
-      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
   }, [pathname, queryClient, router]);
 
   return null;

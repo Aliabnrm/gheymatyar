@@ -4,16 +4,15 @@ import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { PaginationControls } from "@/components/shared/pagination-controls";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentAccountQuery } from "@/services/auth";
-import {
-  useSuppliersQuery,
-  type SupplierStatusFilter,
-} from "@/services/suppliers";
+import { useSuppliersQuery, type SupplierStatusFilter } from "@/services/suppliers";
 
+import { formatPaginationRange } from "@/utils/format";
 import { SupplierPageHeader } from "./supplier-page-header";
 import { SupplierStatusBadge } from "./supplier-status-badge";
 
@@ -69,11 +68,7 @@ export function SuppliersListPage() {
       </div>
 
       {suppliers.isPending ? (
-        <div
-          className="grid gap-3"
-          role="status"
-          aria-label="در حال دریافت تأمین‌کنندگان"
-        >
+        <div className="grid gap-3" role="status" aria-label="در حال دریافت تأمین‌کنندگان">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -84,12 +79,7 @@ export function SuppliersListPage() {
         <Alert role="alert" variant="destructive">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             <span>{suppliers.error.message}</span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => suppliers.refetch()}
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => suppliers.refetch()}>
               <RefreshCw aria-hidden="true" /> تلاش دوباره
             </Button>
           </AlertDescription>
@@ -99,9 +89,7 @@ export function SuppliersListPage() {
       {suppliers.data?.items.length === 0 ? (
         <Card>
           <CardContent className="grid justify-items-center gap-3 py-12 text-center">
-            <h2 className="font-semibold">
-              تأمین‌کننده‌ای در این وضعیت وجود ندارد.
-            </h2>
+            <h2 className="font-semibold">تأمین‌کننده‌ای در این وضعیت وجود ندارد.</h2>
             <p className="text-sm text-muted-foreground">
               {isOwner
                 ? "برای شروع، اولین تأمین‌کننده سازمان را ثبت کنید."
@@ -116,7 +104,7 @@ export function SuppliersListPage() {
         </Card>
       ) : null}
 
-      {suppliers.data && suppliers.data.items.length > 0 ? (
+      {suppliers.data ? (
         <div className="grid gap-3">
           {suppliers.data.items.map((supplier) => (
             <Card key={supplier.id}>
@@ -136,28 +124,14 @@ export function SuppliersListPage() {
               </CardContent>
             </Card>
           ))}
-          <div className="flex items-center justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-            >
-              صفحه قبل
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {offset + 1} تا {Math.min(offset + limit, suppliers.data.total)}{" "}
-              از {suppliers.data.total}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={offset + limit >= suppliers.data.total}
-              onClick={() => setOffset(offset + limit)}
-            >
-              صفحه بعد
-            </Button>
-          </div>
+          <PaginationControls
+            offset={offset}
+            limit={limit}
+            total={suppliers.data.total}
+            onOffsetChange={setOffset}
+          >
+            {formatPaginationRange(offset, limit, suppliers.data.total)}
+          </PaginationControls>
         </div>
       ) : null}
     </main>

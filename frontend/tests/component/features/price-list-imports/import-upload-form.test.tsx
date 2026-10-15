@@ -13,8 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/price-list-imports", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-imports")>();
+  const original = await importOriginal<typeof import("@/services/price-list-imports")>();
   return {
     ...original,
     useUploadPriceListImportMutation: () => ({
@@ -36,24 +35,15 @@ beforeEach(() => {
 describe("ImportUploadForm", () => {
   it("rejects a non-XLSX file before calling the mutation", async () => {
     const user = userEvent.setup({ applyAccept: false });
-    render(
-      <ImportUploadForm
-        supplierId={IMPORT_API_FIXTURE.supplier.id}
-        onCompleted={vi.fn()}
-      />,
-    );
+    render(<ImportUploadForm supplierId={IMPORT_API_FIXTURE.supplier.id} onCompleted={vi.fn()} />);
 
     await user.upload(
       screen.getByLabelText("فایل لیست قیمت"),
       new File(["csv"], "prices.csv", { type: "text/csv" }),
     );
-    await user.click(
-      screen.getByRole("button", { name: "بارگذاری و استخراج فایل" }),
-    );
+    await user.click(screen.getByRole("button", { name: "بارگذاری و استخراج فایل" }));
 
-    expect(
-      await screen.findByText("فقط فایل XLSX قابل بارگذاری است."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("فقط فایل XLSX قابل بارگذاری است.")).toBeInTheDocument();
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
   });
 
@@ -65,17 +55,12 @@ describe("ImportUploadForm", () => {
       sourceDocument: {},
     });
     render(
-      <ImportUploadForm
-        supplierId={IMPORT_API_FIXTURE.supplier.id}
-        onCompleted={onCompleted}
-      />,
+      <ImportUploadForm supplierId={IMPORT_API_FIXTURE.supplier.id} onCompleted={onCompleted} />,
     );
 
     const file = new File(["xlsx"], "prices.xlsx");
     await user.upload(screen.getByLabelText("فایل لیست قیمت"), file);
-    await user.click(
-      screen.getByRole("button", { name: "بارگذاری و استخراج فایل" }),
-    );
+    await user.click(screen.getByRole("button", { name: "بارگذاری و استخراج فایل" }));
 
     await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
     expect(mocks.mutateAsync).toHaveBeenCalledWith({

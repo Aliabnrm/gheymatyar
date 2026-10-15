@@ -58,9 +58,7 @@ function testClient(): QueryClient {
 
 function createWrapper(client: QueryClient) {
   function TestQueryWrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    );
+    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   }
   return TestQueryWrapper;
 }
@@ -121,17 +119,15 @@ describe("price-list version hooks", () => {
       limit: 20,
       offset: 0,
     });
-    const comparisonKey = priceListVersionKeys.importComparison(
-      supplierId,
-      importId,
-      { changeType: null, limit: 50, offset: 0 },
-    );
+    const comparisonKey = priceListVersionKeys.importComparison(supplierId, importId, {
+      changeType: null,
+      limit: 50,
+      offset: 0,
+    });
     client.setQueryData(listKey, {});
     client.setQueryData(comparisonKey, {});
     client.setQueryData(otherKey, {});
-    mocks.create.mockResolvedValue(
-      PriceListVersionSchema.parse(VERSION_API_FIXTURE),
-    );
+    mocks.create.mockResolvedValue(PriceListVersionSchema.parse(VERSION_API_FIXTURE));
     const { result } = renderHook(() => useCreatePriceListVersionMutation(), {
       wrapper: createWrapper(client),
     });
@@ -159,11 +155,11 @@ describe("price-list version hooks", () => {
     const client = testClient();
     const supplierId = IMPORT_API_FIXTURE.supplier.id;
     const importId = IMPORT_API_FIXTURE.id;
-    const comparisonKey = priceListVersionKeys.importComparison(
-      supplierId,
-      importId,
-      { changeType: null, limit: 50, offset: 0 },
-    );
+    const comparisonKey = priceListVersionKeys.importComparison(supplierId, importId, {
+      changeType: null,
+      limit: 50,
+      offset: 0,
+    });
     client.setQueryData(comparisonKey, {});
     await refreshComparisonAfterCreateConflict(
       client,
@@ -204,31 +200,18 @@ describe("price-list version hooks", () => {
         limit: 20,
         offset: 0,
       });
-      const impactKey = priceListVersionKeys.currentImpact(
-        supplierId,
-        versionId,
-        {
-          baselineVersionId: PREVIOUS_VERSION_ID,
-          expectNoCurrent: false,
-          changeType: null,
-          limit: 50,
-          offset: 0,
-        },
-      );
+      const impactKey = priceListVersionKeys.currentImpact(supplierId, versionId, {
+        baselineVersionId: PREVIOUS_VERSION_ID,
+        expectNoCurrent: false,
+        changeType: null,
+        limit: 50,
+        offset: 0,
+      });
       const supplierKey = supplierKeys.detail(supplierId);
-      for (const key of [
-        detailKey,
-        listKey,
-        currentKey,
-        auditKey,
-        impactKey,
-        supplierKey,
-      ]) {
+      for (const key of [detailKey, listKey, currentKey, auditKey, impactKey, supplierKey]) {
         client.setQueryData(key, {});
       }
-      decisionMock.mockResolvedValue(
-        ApprovalResultSchema.parse(APPROVAL_RESULT_API_FIXTURE),
-      );
+      decisionMock.mockResolvedValue(ApprovalResultSchema.parse(APPROVAL_RESULT_API_FIXTURE));
       const { result } = renderHook(() => useDecisionMutation(), {
         wrapper: createWrapper(client),
       });
@@ -252,14 +235,7 @@ describe("price-list version hooks", () => {
       );
 
       expect(decisionMock).toHaveBeenCalledTimes(1);
-      for (const key of [
-        detailKey,
-        listKey,
-        currentKey,
-        auditKey,
-        impactKey,
-        supplierKey,
-      ]) {
+      for (const key of [detailKey, listKey, currentKey, auditKey, impactKey, supplierKey]) {
         expect(client.getQueryState(key)?.isInvalidated).toBe(true);
       }
       client.clear();

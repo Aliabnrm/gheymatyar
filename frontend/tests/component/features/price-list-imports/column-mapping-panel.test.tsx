@@ -27,13 +27,7 @@ beforeEach(() => {
   mocks.save.mockReset();
 });
 const renderPanel = () =>
-  render(
-    <ColumnMappingPanel
-      supplierId="supplier"
-      importId="import"
-      status="DRAFT"
-    />,
-  );
+  render(<ColumnMappingPanel supplierId="supplier" importId="import" status="DRAFT" />);
 describe("column mapping review", () => {
   it("shows loading and server error states", () => {
     mocks.review = { isPending: true };
@@ -44,35 +38,23 @@ describe("column mapping review", () => {
       isError: true,
       error: { message: "سرویس در دسترس نیست." },
     };
-    view.rerender(
-      <ColumnMappingPanel
-        supplierId="supplier"
-        importId="import"
-        status="DRAFT"
-      />,
-    );
+    view.rerender(<ColumnMappingPanel supplierId="supplier" importId="import" status="DRAFT" />);
     expect(screen.getByRole("alert")).toHaveTextContent("سرویس در دسترس نیست.");
   });
   it("shows preview and prevents duplicate and missing mappings", async () => {
     renderPanel();
     const user = userEvent.setup();
-    expect(
-      screen.getByRole("table", { name: "پیش‌نمایش محدود فایل" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "پیش‌نمایش محدود فایل" })).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("نام کالا *"), "1");
     expect(screen.getByRole("alert")).toHaveTextContent("هر ستون را فقط");
-    expect(
-      screen.getByRole("button", { name: "اجرای جدید با این نگاشت" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "اجرای جدید با این نگاشت" })).toBeDisabled();
     await user.selectOptions(screen.getByLabelText("نام کالا *"), "");
     expect(screen.getByRole("alert")).toHaveTextContent("الزامی");
   });
   it("keeps saving and rerunning separate", async () => {
     renderPanel();
     const user = userEvent.setup();
-    await user.click(
-      screen.getByRole("button", { name: "ذخیره الگوی تأمین‌کننده" }),
-    );
+    await user.click(screen.getByRole("button", { name: "ذخیره الگوی تأمین‌کننده" }));
     expect(mocks.save).toHaveBeenCalled();
     expect(mocks.rerun).not.toHaveBeenCalled();
   });
@@ -90,9 +72,7 @@ describe("column mapping review", () => {
     data.inspection.total_errors = 1;
     mocks.review = { data, isPending: false, isError: false };
     renderPanel();
-    expect(
-      screen.getByText("ردیفی برای پیش‌نمایش وجود ندارد."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("ردیفی برای پیش‌نمایش وجود ندارد.")).toBeInTheDocument();
     expect(screen.getByText(/INVALID_PRICE/)).toBeInTheDocument();
     expect(screen.getByText(/قیمت باید صحیح/)).toBeInTheDocument();
   });
@@ -129,10 +109,6 @@ it("blocks writes for inactive suppliers and renders spreadsheet markup as text"
   mocks.review = { data, isPending: false, isError: false };
   renderPanel();
   expect(screen.getByText("<script>alert(1)</script>")).toBeInTheDocument();
-  expect(
-    screen.getByRole("button", { name: "اجرای جدید با این نگاشت" }),
-  ).toBeDisabled();
-  expect(
-    screen.getByRole("button", { name: "ذخیره الگوی تأمین‌کننده" }),
-  ).toBeDisabled();
+  expect(screen.getByRole("button", { name: "اجرای جدید با این نگاشت" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "ذخیره الگوی تأمین‌کننده" })).toBeDisabled();
 });

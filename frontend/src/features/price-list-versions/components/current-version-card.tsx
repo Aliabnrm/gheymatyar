@@ -10,10 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentPriceListVersionQuery } from "@/services/price-list-versions";
 import { formatInteger } from "@/utils/format";
 
-import {
-  ApprovalStatusBadge,
-  CurrentVersionBadge,
-} from "./approval-status-badge";
+import { ApprovalStatusBadge, CurrentVersionBadge } from "./approval-status-badge";
 import { formatVersionDate } from "../model/version-formatters";
 
 export function CurrentVersionCard({ supplierId }: { supplierId: string }) {
@@ -61,9 +58,7 @@ export function CurrentVersionCard({ supplierId }: { supplierId: string }) {
             </div>
             <p className="text-muted-foreground">
               {formatInteger(version.rowCount)} کالا · تصمیم در{" "}
-              {version.decidedAt
-                ? formatVersionDate(version.decidedAt)
-                : "زمان نامشخص"}
+              {version.decidedAt ? formatVersionDate(version.decidedAt) : "زمان نامشخص"}
             </p>
           </div>
         )}

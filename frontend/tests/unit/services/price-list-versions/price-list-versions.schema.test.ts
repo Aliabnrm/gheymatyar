@@ -25,12 +25,24 @@ import {
 } from "../../../fixtures/price-list-versions";
 
 describe("price-list version schemas", () => {
+  it("rejects reports whose summary and baseline disagree", () => {
+    expect(
+      ImportChangeReportSchema.safeParse({
+        ...IMPORT_CHANGE_REPORT_API_FIXTURE,
+        baseline_version: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      CurrentPriceImpactSchema.safeParse({
+        ...CURRENT_PRICE_IMPACT_API_FIXTURE,
+        summary: null,
+      }).success,
+    ).toBe(false);
+  });
   it("parses valid versions, items and multi-label reports", () => {
     const version = PriceListVersionSchema.parse(VERSION_API_FIXTURE);
     const item = PriceListVersionItemSchema.parse(VERSION_ITEM_API_FIXTURE);
-    const report = ImportChangeReportSchema.parse(
-      IMPORT_CHANGE_REPORT_API_FIXTURE,
-    );
+    const report = ImportChangeReportSchema.parse(IMPORT_CHANGE_REPORT_API_FIXTURE);
 
     expect(version.versionNumber).toBe(2);
     expect(item.productCodeRaw).toBe("001-A");
@@ -42,9 +54,7 @@ describe("price-list version schemas", () => {
   });
 
   it("rejects incomplete responses and invalid integer money", () => {
-    expect(() =>
-      PriceListVersionSchema.parse({ ...VERSION_API_FIXTURE, row_count: 0 }),
-    ).toThrow();
+    expect(() => PriceListVersionSchema.parse({ ...VERSION_API_FIXTURE, row_count: 0 })).toThrow();
     expect(() =>
       PriceListVersionItemSchema.parse({
         ...VERSION_ITEM_API_FIXTURE,
@@ -62,9 +72,9 @@ describe("price-list version schemas", () => {
   it("validates review decisions, current null and audit pagination", () => {
     expect(ReviewStatusSchema.parse("APPROVED")).toBe("APPROVED");
     expect(() => ReviewStatusSchema.parse("CURRENT")).toThrow();
-    expect(
-      CurrentPriceListVersionResponseSchema.parse({ current_version: null }),
-    ).toEqual({ currentVersion: null });
+    expect(CurrentPriceListVersionResponseSchema.parse({ current_version: null })).toEqual({
+      currentVersion: null,
+    });
     expect(
       CurrentPriceListVersionResponseSchema.parse({
         current_version: APPROVED_VERSION_API_FIXTURE,
@@ -88,9 +98,7 @@ describe("price-list version schemas", () => {
         decisionNote: null,
       }),
     ).toThrow();
-    expect(() =>
-      RejectionInputSchema.parse({ confirmRejection: true, reason: "   " }),
-    ).toThrow();
+    expect(() => RejectionInputSchema.parse({ confirmRejection: true, reason: "   " })).toThrow();
     expect(
       RejectionInputSchema.parse({
         confirmRejection: true,
@@ -100,12 +108,8 @@ describe("price-list version schemas", () => {
   });
 
   it("parses current-impact states and rejects inconsistent baseline contracts", () => {
-    const current = CurrentPriceImpactSchema.parse(
-      CURRENT_PRICE_IMPACT_API_FIXTURE,
-    );
-    const noCurrent = CurrentPriceImpactSchema.parse(
-      NO_CURRENT_PRICE_IMPACT_API_FIXTURE,
-    );
+    const current = CurrentPriceImpactSchema.parse(CURRENT_PRICE_IMPACT_API_FIXTURE);
+    const noCurrent = CurrentPriceImpactSchema.parse(NO_CURRENT_PRICE_IMPACT_API_FIXTURE);
     expect(current.baselineVersion?.id).toBe(PREVIOUS_VERSION_ID);
     expect(current.targetVersion.id).toBe(VERSION_API_FIXTURE.id);
     expect(noCurrent.baselineStatus).toBe("NO_CURRENT");

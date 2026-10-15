@@ -32,10 +32,7 @@ export function listSuppliersApi(
   });
 }
 
-export function getSupplierApi(
-  supplierId: string,
-  signal?: AbortSignal,
-): Promise<Supplier> {
+export function getSupplierApi(supplierId: string, signal?: AbortSignal): Promise<Supplier> {
   return apiRequest({
     path: `${SUPPLIERS_PATH}/${encodeURIComponent(supplierId)}`,
     signal,

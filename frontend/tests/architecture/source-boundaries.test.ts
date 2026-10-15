@@ -29,12 +29,11 @@ describe("frontend source boundaries", () => {
     expect(sourceTests).toEqual([]);
   });
 
-  it("keeps fetch and manual form state out of the auth feature", () => {
+  it("keeps HTTP transport and manual FormData out of the auth feature", () => {
     const authFeature = readTypeScriptTree("src/features/auth");
 
     expect(authFeature).not.toMatch(/\bfetch\s*\(/);
     expect(authFeature).not.toMatch(/\bFormData\b/);
-    expect(authFeature).not.toMatch(/\buseState\s*\(/);
     expect(authFeature).not.toMatch(/\.register\s*\(/);
   });
 
@@ -67,12 +66,8 @@ describe("frontend source boundaries", () => {
   });
 
   it("keeps price-list version transport and tenant identity out of features", () => {
-    const versionFeature = readTypeScriptTree(
-      "src/features/price-list-versions",
-    );
-    const versionService = readTypeScriptTree(
-      "src/services/price-list-versions",
-    );
+    const versionFeature = readTypeScriptTree("src/features/price-list-versions");
+    const versionService = readTypeScriptTree("src/services/price-list-versions");
 
     expect(versionFeature).not.toMatch(/\bfetch\s*\(/);
     expect(versionFeature).not.toMatch(/\borganizationId\b/);

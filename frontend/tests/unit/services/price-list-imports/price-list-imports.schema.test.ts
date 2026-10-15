@@ -43,11 +43,7 @@ describe("price-list import schemas", () => {
     });
     const invalid = new File(["csv"], "prices.csv", { type: "text/csv" });
 
-    expect(
-      PriceListImportUploadInputSchema.safeParse({ file: valid }).success,
-    ).toBe(true);
-    expect(
-      PriceListImportUploadInputSchema.safeParse({ file: invalid }).success,
-    ).toBe(false);
+    expect(PriceListImportUploadInputSchema.safeParse({ file: valid }).success).toBe(true);
+    expect(PriceListImportUploadInputSchema.safeParse({ file: invalid }).success).toBe(false);
   });
 });

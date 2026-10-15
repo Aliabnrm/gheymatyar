@@ -6,11 +6,7 @@ const STATUS_LABELS: Record<PriceListImportStatus, string> = {
   FAILED: "استخراج ناموفق",
 };
 
-export function ImportStatusBadge({
-  status,
-}: {
-  status: PriceListImportStatus;
-}) {
+export function ImportStatusBadge({ status }: { status: PriceListImportStatus }) {
   return (
     <Badge variant={status === "FAILED" ? "destructive" : "secondary"}>
       {STATUS_LABELS[status]}

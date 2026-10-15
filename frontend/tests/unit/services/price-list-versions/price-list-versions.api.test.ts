@@ -62,11 +62,10 @@ describe("price-list versions API", () => {
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("document", { cookie: "gheymatyar_csrf=csrf-token" });
 
-    await createPriceListVersionApi(
-      IMPORT_API_FIXTURE.supplier.id,
-      IMPORT_API_FIXTURE.id,
-      { expectedPreviousVersionId: PREVIOUS_VERSION_ID, confirmCreate: true },
-    );
+    await createPriceListVersionApi(IMPORT_API_FIXTURE.supplier.id, IMPORT_API_FIXTURE.id, {
+      expectedPreviousVersionId: PREVIOUS_VERSION_ID,
+      confirmCreate: true,
+    });
 
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(request.method).toBe("POST");
@@ -89,26 +88,19 @@ describe("price-list versions API", () => {
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("document", { cookie: "gheymatyar_csrf=csrf-token" });
 
-    await approvePriceListVersionApi(
-      IMPORT_API_FIXTURE.supplier.id,
-      VERSION_API_FIXTURE.id,
-      {
-        expectedCurrentVersionId: PREVIOUS_VERSION_ID,
-        confirmApproval: true,
-        decisionNote: "بررسی شد",
-      },
-    );
-    await rejectPriceListVersionApi(
-      IMPORT_API_FIXTURE.supplier.id,
-      VERSION_API_FIXTURE.id,
-      { confirmRejection: true, reason: "قیمت نیازمند اصلاح است" },
-    );
+    await approvePriceListVersionApi(IMPORT_API_FIXTURE.supplier.id, VERSION_API_FIXTURE.id, {
+      expectedCurrentVersionId: PREVIOUS_VERSION_ID,
+      confirmApproval: true,
+      decisionNote: "بررسی شد",
+    });
+    await rejectPriceListVersionApi(IMPORT_API_FIXTURE.supplier.id, VERSION_API_FIXTURE.id, {
+      confirmRejection: true,
+      reason: "قیمت نیازمند اصلاح است",
+    });
 
     const [approveUrl, approveRequest] = fetchMock.mock.calls[0]!;
     expect(String(approveUrl)).toContain(`/${VERSION_API_FIXTURE.id}/approve`);
-    expect(new Headers(approveRequest.headers).get("X-CSRF-Token")).toBe(
-      "csrf-token",
-    );
+    expect(new Headers(approveRequest.headers).get("X-CSRF-Token")).toBe("csrf-token");
     expect(JSON.parse(String(approveRequest.body))).toEqual({
       expected_current_version_id: PREVIOUS_VERSION_ID,
       confirm_approval: true,
@@ -127,10 +119,10 @@ describe("price-list versions API", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ current_version: APPROVED_VERSION_API_FIXTURE }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+        new Response(JSON.stringify({ current_version: APPROVED_VERSION_API_FIXTURE }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
       )
       .mockResolvedValueOnce(
         new Response(
@@ -159,12 +151,8 @@ describe("price-list versions API", () => {
 
     expect(current.currentVersion?.isCurrent).toBe(true);
     expect(audit.items[0]?.action).toBe("PRICE_LIST_VERSION_APPROVED");
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
-      "limit=20&offset=40",
-    );
-    expect((fetchMock.mock.calls[1]?.[1] as RequestInit).signal).toBe(
-      controller.signal,
-    );
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("limit=20&offset=40");
+    expect((fetchMock.mock.calls[1]?.[1] as RequestInit).signal).toBe(controller.signal);
   });
 
   it("reads current impact with a pinned baseline, filter and AbortSignal", async () => {

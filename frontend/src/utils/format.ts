@@ -15,6 +15,20 @@ export function formatInteger(value: number): string {
   return integerFormatter.format(value);
 }
 
+export function formatPaginationRange(offset: number, limit: number, total: number): string {
+  if (total === 0) return "۰ مورد";
+  if (offset >= total) return `${formatInteger(total)} مورد؛ به صفحه قبل برگردید.`;
+  return `${formatInteger(offset + 1)} تا ${formatInteger(Math.min(offset + limit, total))} از ${formatInteger(total)}`;
+}
+
+const dateTimeFormatter = new Intl.DateTimeFormat("fa-IR", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+export function formatDateTime(value: string): string {
+  return dateTimeFormatter.format(new Date(value));
+}
+
 export function formatPriceDelta(value: number | null): string {
   if (value === null) return "—";
   const sign = value > 0 ? "+" : "";

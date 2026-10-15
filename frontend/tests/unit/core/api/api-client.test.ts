@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { apiRequest } from "@/core/api/api-client";
+import { advanceAuthSessionEpoch, AUTH_UNAUTHORIZED_EVENT } from "@/core/api/auth-session-event";
 
 const ValueResponseSchema = z.object({ value: z.string() });
 
@@ -10,12 +11,49 @@ afterEach(() => {
 });
 
 describe("apiRequest", () => {
+  it("clears an unauthorized session even if its error body is malformed", async () => {
+    const listener = vi.fn();
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener);
+    try {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not json", { status: 401 })));
+      await expect(
+        apiRequest({ path: "/test", responseSchema: ValueResponseSchema }),
+      ).rejects.toMatchObject({ status: 401 });
+      expect(listener).toHaveBeenCalledOnce();
+    } finally {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, listener);
+    }
+  });
+  it("ignores a late unauthorized response from a previous session", async () => {
+    let finish!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
+    const listener = vi.fn();
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, listener);
+    try {
+      const request = apiRequest({
+        path: "/test",
+        responseSchema: ValueResponseSchema,
+      });
+      advanceAuthSessionEpoch();
+      finish(new Response("not json", { status: 401 }));
+      await expect(request).rejects.toMatchObject({ status: 401 });
+      expect(listener).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, listener);
+    }
+  });
   it("returns a successful response only after parsing it", async () => {
     const fetchMock = vi
       .fn()
-      .mockImplementation(() =>
-        Promise.resolve(jsonResponse({ value: "ok" }, 200)),
-      );
+      .mockImplementation(() => Promise.resolve(jsonResponse({ value: "ok" }, 200)));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -33,9 +71,7 @@ describe("apiRequest", () => {
   it("adds the readable CSRF cookie only to an explicitly protected mutation", async () => {
     const fetchMock = vi
       .fn()
-      .mockImplementation(() =>
-        Promise.resolve(jsonResponse({ value: "ok" }, 200)),
-      );
+      .mockImplementation(() => Promise.resolve(jsonResponse({ value: "ok" }, 200)));
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("document", { cookie: "gheymatyar_csrf=csrf-value" });
 
@@ -52,9 +88,7 @@ describe("apiRequest", () => {
     });
 
     const protectedHeaders = fetchMock.mock.calls[0]?.[1]?.headers as Headers;
-    const loginHeaders = fetchMock.mock.calls[1]?.[1]?.headers as
-      | HeadersInit
-      | undefined;
+    const loginHeaders = fetchMock.mock.calls[1]?.[1]?.headers as HeadersInit | undefined;
     expect(protectedHeaders.get("X-CSRF-Token")).toBe("csrf-value");
     expect(new Headers(loginHeaders).has("X-CSRF-Token")).toBe(false);
   });
@@ -88,10 +122,7 @@ describe("apiRequest", () => {
   });
 
   it("uses a stable fallback for an unstructured backend error", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(jsonResponse({ error: "invalid" }, 500)),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ error: "invalid" }, 500)));
 
     await expect(
       apiRequest({ path: "/test", responseSchema: ValueResponseSchema }),
@@ -102,10 +133,7 @@ describe("apiRequest", () => {
   });
 
   it("rejects an untrusted success payload that does not match its schema", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(jsonResponse({ unexpected: true }, 200)),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ unexpected: true }, 200)));
 
     await expect(
       apiRequest({ path: "/test", responseSchema: ValueResponseSchema }),
@@ -116,10 +144,7 @@ describe("apiRequest", () => {
   });
 
   it("maps a network failure without exposing its internal error", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new TypeError("connection refused")),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("connection refused")));
 
     await expect(
       apiRequest({ path: "/test", responseSchema: ValueResponseSchema }),

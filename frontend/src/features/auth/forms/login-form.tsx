@@ -59,11 +59,7 @@ export function LoginForm() {
       noValidate
     >
       {login.error ? (
-        <AuthFeedback
-          message={login.error.message}
-          focusable
-          feedbackRef={errorRef}
-        />
+        <AuthFeedback message={login.error.message} focusable feedbackRef={errorRef} />
       ) : null}
 
       <ControlledInputField

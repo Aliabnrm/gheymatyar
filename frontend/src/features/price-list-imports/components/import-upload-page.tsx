@@ -50,8 +50,7 @@ export function ImportUploadPage({ supplierId }: { supplierId: string }) {
           <p className="text-sm text-muted-foreground">{supplier.data.name}</p>
           <h1 className="text-2xl font-bold">بارگذاری لیست قیمت</h1>
           <p className="text-sm text-muted-foreground">
-            فایل پس از اعتبارسنجی استخراج و به‌صورت پیش‌نویس قابل بازبینی ذخیره
-            می‌شود.
+            فایل پس از اعتبارسنجی استخراج و به‌صورت پیش‌نویس قابل بازبینی ذخیره می‌شود.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -64,8 +63,7 @@ export function ImportUploadPage({ supplierId }: { supplierId: string }) {
       {!supplier.data.isActive ? (
         <Alert variant="destructive" role="alert">
           <AlertDescription>
-            این تأمین‌کننده غیرفعال است. برای بارگذاری جدید ابتدا آن را فعال
-            کنید.
+            این تأمین‌کننده غیرفعال است. برای بارگذاری جدید ابتدا آن را فعال کنید.
           </AlertDescription>
         </Alert>
       ) : (
@@ -77,9 +75,7 @@ export function ImportUploadPage({ supplierId }: { supplierId: string }) {
             <ImportUploadForm
               supplierId={supplierId}
               onCompleted={(priceListImport) =>
-                router.push(
-                  `/suppliers/${supplierId}/imports/${priceListImport.id}`,
-                )
+                router.push(`/suppliers/${supplierId}/imports/${priceListImport.id}`)
               }
             />
           </CardContent>

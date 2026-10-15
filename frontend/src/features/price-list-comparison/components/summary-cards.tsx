@@ -57,10 +57,7 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
   return (
     <div className="summary-grid" aria-label="خلاصه مقایسه">
       {cards.map((card) => (
-        <article
-          className={"summary-card summary-card--" + card.tone}
-          key={card.key}
-        >
+        <article className={"summary-card summary-card--" + card.tone} key={card.key}>
           <p>{card.label}</p>
           <strong>{formatInteger(summary[card.key])}</strong>
           <span>{card.detail(summary)}</span>

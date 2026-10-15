@@ -9,12 +9,7 @@ import { Controller, useForm } from "react-hook-form";
 import { AsyncButtonContent } from "@/components/shared/async-button-content";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   PriceListImportUploadInputSchema,
@@ -23,10 +18,7 @@ import {
   type PriceListImportUploadFormInput,
 } from "@/services/price-list-imports";
 
-import {
-  getExistingImportId,
-  getImportErrorMessage,
-} from "../model/import-error-message";
+import { getExistingImportId, getImportErrorMessage } from "../model/import-error-message";
 
 export function ImportUploadForm({
   supplierId,
@@ -56,9 +48,7 @@ export function ImportUploadForm({
     }
   }
 
-  const existingImportId = upload.error
-    ? getExistingImportId(upload.error)
-    : null;
+  const existingImportId = upload.error ? getExistingImportId(upload.error) : null;
 
   return (
     <form
@@ -90,8 +80,7 @@ export function ImportUploadForm({
                 onChange={(event) => onChange(event.target.files?.[0])}
               />
               <FieldDescription id={descriptionId}>
-                فقط XLSX تا سقف ۱۰ مگابایت؛ فایل اصلی برای بازبینی و تاریخچه
-                نگهداری می‌شود.
+                فقط XLSX تا سقف ۱۰ مگابایت؛ فایل اصلی برای بازبینی و تاریخچه نگهداری می‌شود.
               </FieldDescription>
               <FieldError id={errorId} errors={[fieldState.error]} />
             </Field>

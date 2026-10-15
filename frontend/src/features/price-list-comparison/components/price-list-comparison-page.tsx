@@ -1,8 +1,9 @@
 import { ComparisonWorkspace } from "./comparison-workspace";
+import "../comparison.css";
 
 export function PriceListComparisonPage() {
   return (
-    <>
+    <div className="comparison-page">
       <main>
         <section className="hero">
           <div className="hero__glow" aria-hidden="true" />
@@ -13,9 +14,8 @@ export function PriceListComparisonPage() {
               <span> قبل از اینکه حاشیه سودتان تغییر کند.</span>
             </h1>
             <p className="hero__lead">
-              دو نسخه لیست قیمت یک تأمین‌کننده را انتخاب کنید. قیمت‌یار کالاهای
-              جدید، حذف‌شده، تغییر قیمت و تغییر تعداد بسته را جداگانه نشان
-              می‌دهد.
+              دو نسخه لیست قیمت یک تأمین‌کننده را انتخاب کنید. قیمت‌یار کالاهای جدید، حذف‌شده، تغییر
+              قیمت و تغییر تعداد بسته را جداگانه نشان می‌دهد.
             </p>
             <div className="trust-row" aria-label="ویژگی‌های اعتماد">
               <span>بدون تغییر فایل اصلی</span>
@@ -34,6 +34,6 @@ export function PriceListComparisonPage() {
           <span>هیچ نسخه‌ای بدون تأیید انسان منتشر نمی‌شود.</span>
         </div>
       </footer>
-    </>
+    </div>
   );
 }

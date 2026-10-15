@@ -1,7 +1,4 @@
-export {
-  ApprovalStatusBadge,
-  CurrentVersionBadge,
-} from "./components/approval-status-badge";
+export { ApprovalStatusBadge, CurrentVersionBadge } from "./components/approval-status-badge";
 export { CurrentVersionCard } from "./components/current-version-card";
 export { ImportChangeReview } from "./components/import-change-review";
 export { VersionApprovalPanel } from "./components/version-approval-panel";

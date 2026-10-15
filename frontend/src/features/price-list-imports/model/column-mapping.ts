@@ -6,6 +6,7 @@ import {
   type MappingReview,
   type CanonicalField,
 } from "@/services/price-list-imports/column-mapping.schema";
+import type { PriceListImportStatus } from "@/services/price-list-imports/price-list-imports.schema";
 
 export const fieldLabels: Record<CanonicalField, string> = {
   product_code: "کد کالا",
@@ -24,9 +25,7 @@ export const mappingFields = CanonicalFieldSchema.options.map((field) => ({
 }));
 export function mappingValidation(mapping: ColumnMapping): string[] {
   const result = ColumnMappingInputSchema.safeParse(mapping);
-  return result.success
-    ? []
-    : [...new Set(result.error.issues.map((issue) => issue.message))];
+  return result.success ? [] : [...new Set(result.error.issues.map((issue) => issue.message))];
 }
 export function updateColumn(
   mapping: ColumnMapping,
@@ -43,7 +42,7 @@ export function initialMapping(review: MappingReview): ColumnMapping {
 }
 export function canSaveTemplate(
   review: MappingReview,
-  status: string,
+  status: PriceListImportStatus,
   changed: boolean,
 ): boolean {
   return (

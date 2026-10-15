@@ -7,10 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentAccountQuery } from "@/services/auth";
-import {
-  useCreateSupplierMutation,
-  type SupplierNameInput,
-} from "@/services/suppliers";
+import { useCreateSupplierMutation, type SupplierNameInput } from "@/services/suppliers";
 
 import { SupplierPageHeader } from "./supplier-page-header";
 import { SupplierNameForm } from "../forms/supplier-name-form";

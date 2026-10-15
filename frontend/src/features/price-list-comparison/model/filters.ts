@@ -23,9 +23,7 @@ export function filterComparisonItems(
     case "high-risk":
       return items.filter((item) => item.is_high_risk);
     case "price":
-      return items.filter((item) =>
-        item.change_types.includes("PRICE_CHANGED"),
-      );
+      return items.filter((item) => item.change_types.includes("PRICE_CHANGED"));
     case "added":
       return items.filter((item) => item.change_types.includes("ADDED"));
     case "removed":

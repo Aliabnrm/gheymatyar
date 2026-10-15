@@ -1,19 +1,9 @@
 "use client";
 
 import { useId, type ComponentProps } from "react";
-import {
-  Controller,
-  type Control,
-  type FieldPathByValue,
-  type FieldValues,
-} from "react-hook-form";
+import { Controller, type Control, type FieldPathByValue, type FieldValues } from "react-hook-form";
 
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 type InputProps = Omit<
@@ -21,8 +11,7 @@ type InputProps = Omit<
   "defaultValue" | "name" | "onBlur" | "onChange" | "ref" | "value"
 >;
 
-interface ControlledInputFieldProps<TFieldValues extends FieldValues>
-  extends InputProps {
+interface ControlledInputFieldProps<TFieldValues extends FieldValues> extends InputProps {
   control: Control<TFieldValues>;
   name: FieldPathByValue<TFieldValues, string>;
   label: string;
@@ -48,10 +37,7 @@ export function ControlledInputField<TFieldValues extends FieldValues>({
       control={control}
       name={name}
       render={({ field, fieldState }) => {
-        const describedBy = [
-          descriptionId,
-          fieldState.error ? errorId : undefined,
-        ]
+        const describedBy = [descriptionId, fieldState.error ? errorId : undefined]
           .filter(Boolean)
           .join(" ");
 
@@ -69,9 +55,7 @@ export function ControlledInputField<TFieldValues extends FieldValues>({
               className="h-11 bg-background text-start"
             />
             {description ? (
-              <FieldDescription id={descriptionId}>
-                {description}
-              </FieldDescription>
+              <FieldDescription id={descriptionId}>{description}</FieldDescription>
             ) : null}
             <FieldError id={errorId} errors={[fieldState.error]} />
           </Field>

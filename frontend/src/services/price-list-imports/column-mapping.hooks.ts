@@ -1,11 +1,8 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSessionMutation } from "@/core/query/use-session-mutation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiRequestError } from "@/core/api/api-error";
-import {
-  getMappingReviewApi,
-  rerunImportApi,
-  saveMappingTemplateApi,
-} from "./column-mapping.api";
+import { getMappingReviewApi, rerunImportApi, saveMappingTemplateApi } from "./column-mapping.api";
 import type {
   ColumnMapping,
   MappingReview,
@@ -20,12 +17,7 @@ export const mappingKeys = {
     supplierId: string,
     importId: string,
     selection?: { sheet_name: string; header_row: number },
-  ) =>
-    [
-      ...priceListImportKeys.detail(supplierId, importId),
-      "mapping",
-      selection ?? null,
-    ] as const,
+  ) => [...priceListImportKeys.detail(supplierId, importId), "mapping", selection ?? null] as const,
 };
 export function useMappingReviewQuery(
   supplierId: string,
@@ -34,14 +26,13 @@ export function useMappingReviewQuery(
 ) {
   return useQuery<MappingReview, ApiRequestError>({
     queryKey: mappingKeys.review(supplierId, importId, selection),
-    queryFn: ({ signal }) =>
-      getMappingReviewApi(supplierId, importId, selection, signal),
+    queryFn: ({ signal }) => getMappingReviewApi(supplierId, importId, selection, signal),
     retry: false,
   });
 }
 export function useRerunImportMutation(supplierId: string, importId: string) {
   const client = useQueryClient();
-  return useMutation<PriceListImport, ApiRequestError, ColumnMapping>({
+  return useSessionMutation<PriceListImport, ColumnMapping>({
     mutationKey: [...priceListImportKeys.all, "rerun"],
     mutationFn: (mapping) => rerunImportApi(supplierId, importId, mapping),
     retry: false,
@@ -49,16 +40,13 @@ export function useRerunImportMutation(supplierId: string, importId: string) {
       await client.invalidateQueries({
         queryKey: priceListImportKeys.bySupplier(supplierId),
       });
-      client.setQueryData(
-        priceListImportKeys.detail(supplierId, result.id),
-        result,
-      );
+      client.setQueryData(priceListImportKeys.detail(supplierId, result.id), result);
     },
   });
 }
 export function useSaveMappingTemplateMutation(supplierId: string) {
   const client = useQueryClient();
-  return useMutation<MappingTemplate, ApiRequestError, SaveMappingTemplate>({
+  return useSessionMutation<MappingTemplate, SaveMappingTemplate>({
     mutationKey: [...priceListImportKeys.all, "save-template"],
     mutationFn: (input) => saveMappingTemplateApi(supplierId, input),
     retry: false,
@@ -66,5 +54,12 @@ export function useSaveMappingTemplateMutation(supplierId: string) {
       client.invalidateQueries({
         queryKey: priceListImportKeys.bySupplier(supplierId),
       }),
+    onError: (error) => {
+      if (error.code === "MAPPING_TEMPLATE_CONFLICT") {
+        return client.invalidateQueries({
+          queryKey: priceListImportKeys.bySupplier(supplierId),
+        });
+      }
+    },
   });
 }

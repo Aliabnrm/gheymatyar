@@ -4,13 +4,11 @@ import { publicEnv } from "@/config/public-env";
 
 import { ApiRequestError, isAbortError } from "./api-error";
 import { ApiErrorPayloadSchema } from "./api-error.schema";
-import { dispatchAuthUnauthorized } from "./auth-session-event";
+import { authSessionEpoch, dispatchAuthUnauthorized } from "./auth-session-event";
 import { withCsrfHeader } from "./csrf";
 
-const NETWORK_ERROR_MESSAGE =
-  "ارتباط با سرویس برقرار نشد. از اجرای بک‌اند مطمئن شوید.";
-const UNKNOWN_API_ERROR_MESSAGE =
-  "پردازش درخواست با خطای غیرمنتظره روبه‌رو شد.";
+const NETWORK_ERROR_MESSAGE = "ارتباط با سرویس برقرار نشد. از اجرای بک‌اند مطمئن شوید.";
+const UNKNOWN_API_ERROR_MESSAGE = "پردازش درخواست با خطای غیرمنتظره روبه‌رو شد.";
 const INVALID_API_RESPONSE_MESSAGE = "پاسخ سرویس قابل خواندن نیست.";
 
 interface ApiRequestOptions<TResponse> {
@@ -46,6 +44,7 @@ export async function apiRequest<TResponse>({
   errorMessages,
   includeCsrfToken = false,
 }: ApiRequestOptions<TResponse>): Promise<TResponse> {
+  const requestEpoch = authSessionEpoch();
   const messages = { ...defaultErrorMessages, ...errorMessages };
   const response = await sendRequest(
     path,
@@ -53,10 +52,7 @@ export async function apiRequest<TResponse>({
       method,
       body,
       credentials: "include",
-      headers:
-        includeCsrfToken && method !== "GET"
-          ? withCsrfHeader(headers)
-          : headers,
+      headers: includeCsrfToken && method !== "GET" ? withCsrfHeader(headers) : headers,
       signal,
     },
     messages.network,
@@ -65,10 +61,13 @@ export async function apiRequest<TResponse>({
 
   if (!response.ok) {
     const errorResult = ApiErrorPayloadSchema.safeParse(payload);
+    if (response.status === 401) {
+      dispatchAuthUnauthorized(
+        errorResult.success ? errorResult.data.error.code : "UNAUTHORIZED",
+        requestEpoch,
+      );
+    }
     if (errorResult.success) {
-      if (response.status === 401) {
-        dispatchAuthUnauthorized(errorResult.data.error.code);
-      }
       throw new ApiRequestError(errorResult.data.error.message, {
         code: errorResult.data.error.code,
         status: response.status,

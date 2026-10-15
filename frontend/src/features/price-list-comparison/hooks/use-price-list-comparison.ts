@@ -16,8 +16,7 @@ export function usePriceListComparison() {
   const [oldFile, setOldFileState] = useState<File | null>(null);
   const [newFile, setNewFileState] = useState<File | null>(null);
   const [filter, setFilter] = useState<ResultFilter>("all");
-  const [validationError, setValidationError] =
-    useState<ComparisonError | null>(null);
+  const [validationError, setValidationError] = useState<ComparisonError | null>(null);
   const comparisonMutation = useComparePriceListsMutation();
 
   const result = comparisonMutation.data ?? null;

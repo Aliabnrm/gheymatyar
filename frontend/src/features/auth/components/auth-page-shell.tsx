@@ -47,23 +47,17 @@ export function AuthPageShell({
               </span>
               <span>
                 <strong className="block leading-tight">قیمت‌یار</strong>
-                <small className="block text-xs text-muted-foreground">
-                  مقایسه امن لیست قیمت
-                </small>
+                <small className="block text-xs text-muted-foreground">مقایسه امن لیست قیمت</small>
               </span>
             </Link>
             <div className="grid gap-2">
-              <p className="text-xs font-extrabold tracking-wide text-primary">
-                فضای کاری سازمانی
-              </p>
+              <p className="text-xs font-extrabold tracking-wide text-primary">فضای کاری سازمانی</p>
               <CardTitle>
                 <h1 id="auth-title" className="text-2xl sm:text-[1.7rem]">
                   {title}
                 </h1>
               </CardTitle>
-              <CardDescription className="leading-6">
-                {description}
-              </CardDescription>
+              <CardDescription className="leading-6">{description}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="px-6 pt-6 sm:px-9">{children}</CardContent>

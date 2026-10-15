@@ -41,9 +41,7 @@ describe("UnauthorizedSessionListener", () => {
 
     window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
 
-    await waitFor(() =>
-      expect(mocks.clearAuthenticatedData).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(mocks.clearAuthenticatedData).toHaveBeenCalled());
     expect(mocks.replace).toHaveBeenCalledWith("/login?reason=session-expired");
   });
 

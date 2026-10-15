@@ -10,8 +10,7 @@ import { APPROVED_VERSION_API_FIXTURE } from "../../../fixtures/price-list-versi
 const mocks = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
 vi.mock("@/services/price-list-versions", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-versions")>();
+  const original = await importOriginal<typeof import("@/services/price-list-versions")>();
   return { ...original, useCurrentPriceListVersionQuery: () => mocks.current };
 });
 
@@ -20,9 +19,7 @@ beforeEach(() => {
     isPending: false,
     isError: false,
     data: {
-      currentVersion: PriceListVersionSchema.parse(
-        APPROVED_VERSION_API_FIXTURE,
-      ),
+      currentVersion: PriceListVersionSchema.parse(APPROVED_VERSION_API_FIXTURE),
     },
   };
 });
@@ -38,9 +35,7 @@ describe("CurrentVersionCard", () => {
 
   it("shows loading, empty and server-error states", () => {
     mocks.current = { isPending: true, isError: false };
-    const view = render(
-      <CurrentVersionCard supplierId={IMPORT_API_FIXTURE.supplier.id} />,
-    );
+    const view = render(<CurrentVersionCard supplierId={IMPORT_API_FIXTURE.supplier.id} />);
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     mocks.current = {
@@ -48,9 +43,7 @@ describe("CurrentVersionCard", () => {
       isError: false,
       data: { currentVersion: null },
     };
-    view.rerender(
-      <CurrentVersionCard supplierId={IMPORT_API_FIXTURE.supplier.id} />,
-    );
+    view.rerender(<CurrentVersionCard supplierId={IMPORT_API_FIXTURE.supplier.id} />);
     expect(screen.getByText(/قیمت جاری وجود ندارد/)).toBeInTheDocument();
 
     mocks.current = {
@@ -59,9 +52,7 @@ describe("CurrentVersionCard", () => {
       error: { message: "خطای موقت" },
       refetch: vi.fn(),
     };
-    view.rerender(
-      <CurrentVersionCard supplierId={IMPORT_API_FIXTURE.supplier.id} />,
-    );
+    view.rerender(<CurrentVersionCard supplierId={IMPORT_API_FIXTURE.supplier.id} />);
     expect(screen.getByRole("alert")).toHaveTextContent("خطای موقت");
   });
 });

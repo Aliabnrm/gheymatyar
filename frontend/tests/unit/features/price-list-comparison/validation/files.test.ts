@@ -18,15 +18,13 @@ describe("comparison file validation", () => {
   });
 
   it("accepts XLSX extensions case-insensitively", () => {
-    expect(
-      validateComparisonFiles(makeFile("old.XLSX", 1), makeFile("new.xlsx", 1)),
-    ).toMatchObject({ valid: true });
+    expect(validateComparisonFiles(makeFile("old.XLSX", 1), makeFile("new.xlsx", 1))).toMatchObject(
+      { valid: true },
+    );
   });
 
   it("rejects unsupported files", () => {
-    expect(
-      validateComparisonFiles(makeFile("old.xls", 1), makeFile("new.xlsx", 1)),
-    ).toMatchObject({
+    expect(validateComparisonFiles(makeFile("old.xls", 1), makeFile("new.xlsx", 1))).toMatchObject({
       valid: false,
       error: { code: "INVALID_FILE_TYPE" },
     });
@@ -34,10 +32,7 @@ describe("comparison file validation", () => {
 
   it("rejects files larger than 10 MiB", () => {
     expect(
-      validateComparisonFiles(
-        makeFile("old.xlsx", MAX_FILE_BYTES + 1),
-        makeFile("new.xlsx", 1),
-      ),
+      validateComparisonFiles(makeFile("old.xlsx", MAX_FILE_BYTES + 1), makeFile("new.xlsx", 1)),
     ).toMatchObject({
       valid: false,
       error: { code: "FILE_TOO_LARGE" },

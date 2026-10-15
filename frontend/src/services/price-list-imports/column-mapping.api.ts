@@ -27,11 +27,7 @@ export function getMappingReviewApi(
     responseSchema: MappingReviewSchema,
   });
 }
-export function rerunImportApi(
-  supplierId: string,
-  importId: string,
-  mapping: ColumnMapping,
-) {
+export function rerunImportApi(supplierId: string, importId: string, mapping: ColumnMapping) {
   return apiRequest({
     path: `${supplierPath(supplierId)}/imports/${encodeURIComponent(importId)}/rerun`,
     method: "POST",
@@ -41,10 +37,7 @@ export function rerunImportApi(
     responseSchema: PriceListImportSchema,
   });
 }
-export function saveMappingTemplateApi(
-  supplierId: string,
-  input: SaveMappingTemplate,
-) {
+export function saveMappingTemplateApi(supplierId: string, input: SaveMappingTemplate) {
   return apiRequest({
     path: `${supplierPath(supplierId)}/mapping-template`,
     method: "POST",

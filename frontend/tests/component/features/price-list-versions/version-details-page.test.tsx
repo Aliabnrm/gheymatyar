@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   changeFilters: [] as ChangeReportFilters[],
   impactFilters: [] as CurrentPriceImpactFilters[],
   impact: null as unknown,
+  impactError: null as { status: number; message: string } | null,
+  reviewStatus: "READY_FOR_REVIEW",
 }));
 
 vi.mock("@/services/auth", async (importOriginal) => {
@@ -34,8 +36,7 @@ vi.mock("@/services/auth", async (importOriginal) => {
 });
 
 vi.mock("@/services/price-list-versions", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@/services/price-list-versions")>();
+  const original = await importOriginal<typeof import("@/services/price-list-versions")>();
   const fixtures = await import("../../../fixtures/price-list-versions");
   const historicalBaselineId = "cddcd9fc-da48-4fc8-af56-07517ccfd05c";
   const version = original.PriceListVersionSchema.parse({
@@ -57,15 +58,13 @@ vi.mock("@/services/price-list-versions", async (importOriginal) => {
     limit: 50,
     offset: 0,
   });
-  const impact = original.CurrentPriceImpactSchema.parse(
-    fixtures.CURRENT_PRICE_IMPACT_API_FIXTURE,
-  );
+  const impact = original.CurrentPriceImpactSchema.parse(fixtures.CURRENT_PRICE_IMPACT_API_FIXTURE);
   return {
     ...original,
     usePriceListVersionQuery: () => ({
       isPending: false,
       isError: false,
-      data: version,
+      data: { ...version, reviewStatus: mocks.reviewStatus },
     }),
     usePriceListVersionChangesQuery: (
       _supplierId: string,
@@ -84,7 +83,7 @@ vi.mock("@/services/price-list-versions", async (importOriginal) => {
       return {
         isPending: false,
         isError: false,
-        error: null,
+        error: mocks.impactError,
         data: mocks.impact ?? impact,
         refetch: vi.fn(),
       };
@@ -120,15 +119,14 @@ beforeEach(() => {
   mocks.changeFilters.length = 0;
   mocks.impactFilters.length = 0;
   mocks.impact = null;
+  mocks.impactError = null;
+  mocks.reviewStatus = "READY_FOR_REVIEW";
 });
 
 describe("VersionDetailsPage current-price impact", () => {
   it("shows distinct historical and current baselines and approves with the report baseline", async () => {
     render(
-      <VersionDetailsPage
-        supplierId={IMPORT_API_FIXTURE.supplier.id}
-        versionId={VERSION_ID}
-      />,
+      <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
     );
 
     expect(
@@ -136,22 +134,14 @@ describe("VersionDetailsPage current-price impact", () => {
         name: "تغییرات نسبت به نسخه قبلی ثبت‌شده",
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "اثر این نسخه بر قیمت جاری" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "اثر این نسخه بر قیمت جاری" })).toBeInTheDocument();
     expect(screen.getByText(/مبنای تاریخی: نسخه ۲/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/مبنای عملیاتی: قیمت جاری نسخه ۱/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/مبنای عملیاتی: قیمت جاری نسخه ۱/)).toBeInTheDocument();
     expect(screen.getAllByText("001-A").length).toBeGreaterThanOrEqual(2);
 
     const user = userEvent.setup();
-    await user.click(
-      screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ }),
-    );
-    await user.click(
-      screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }),
-    );
+    await user.click(screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ }));
+    await user.click(screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }));
 
     await waitFor(() =>
       expect(mocks.approveAsync).toHaveBeenCalledWith({
@@ -168,10 +158,7 @@ describe("VersionDetailsPage current-price impact", () => {
 
   it("keeps historical and current-impact filters independent", async () => {
     render(
-      <VersionDetailsPage
-        supplierId={IMPORT_API_FIXTURE.supplier.id}
-        versionId={VERSION_ID}
-      />,
+      <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
     );
     const user = userEvent.setup();
     const impactFilters = screen.getByLabelText("فیلتر اثر بر قیمت جاری");
@@ -186,24 +173,15 @@ describe("VersionDetailsPage current-price impact", () => {
   });
 
   it("shows NO_CURRENT and approves the first current version with a null baseline", async () => {
-    mocks.impact = CurrentPriceImpactSchema.parse(
-      NO_CURRENT_PRICE_IMPACT_API_FIXTURE,
-    );
+    mocks.impact = CurrentPriceImpactSchema.parse(NO_CURRENT_PRICE_IMPACT_API_FIXTURE);
     render(
-      <VersionDetailsPage
-        supplierId={IMPORT_API_FIXTURE.supplier.id}
-        versionId={VERSION_ID}
-      />,
+      <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
     );
     expect(screen.getByText(/اولین قیمت جاری خواهد شد/)).toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(
-      screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ }),
-    );
-    await user.click(
-      screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }),
-    );
+    await user.click(screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ }));
+    await user.click(screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" }));
     await waitFor(() =>
       expect(mocks.approveAsync).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -212,4 +190,33 @@ describe("VersionDetailsPage current-price impact", () => {
       ),
     );
   });
+});
+
+it("blocks approval on a report refetch failure even when cached data exists", async () => {
+  const view = render(
+    <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
+  );
+  await userEvent
+    .setup()
+    .click(screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ }));
+  mocks.impactError = { status: 409, message: "baseline changed" };
+  view.rerender(
+    <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
+  );
+  expect(screen.getByRole("button", { name: "تأیید و انتخاب قیمت جاری" })).toBeDisabled();
+  mocks.impactError = null;
+  view.rerender(
+    <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
+  );
+  expect(screen.getByRole("checkbox", { name: /تغییرات نسخه را بررسی کردم/ })).not.toBeChecked();
+});
+it("hides the cached live report after the target becomes terminal", () => {
+  const view = render(
+    <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
+  );
+  mocks.reviewStatus = "APPROVED";
+  view.rerender(
+    <VersionDetailsPage supplierId={IMPORT_API_FIXTURE.supplier.id} versionId={VERSION_ID} />,
+  );
+  expect(screen.queryByText(/مبنای عملیاتی: قیمت جاری/)).not.toBeInTheDocument();
 });

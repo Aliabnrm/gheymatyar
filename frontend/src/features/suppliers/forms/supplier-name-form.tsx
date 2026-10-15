@@ -36,6 +36,16 @@ export function SupplierNameForm({
     mode: "onSubmit",
   });
   const submitting = form.formState.isSubmitting || isPending;
+  const {
+    reset,
+    getValues,
+    formState: { isDirty },
+  } = form;
+  useEffect(() => {
+    if (!isDirty || getValues("name").trim() === initialName) {
+      reset({ name: initialName });
+    }
+  }, [initialName, reset, getValues, isDirty]);
 
   useEffect(() => {
     if (error) errorRef.current?.focus();
